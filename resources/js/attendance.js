@@ -64,6 +64,10 @@ export function mountAttendance(root) {
     };
 
     const save = async (payload, previous) => {
+        if (!url) {
+            await keepOffline(Object.keys(previous).filter((id) => previous[id] !== statuses[id]));
+            return;
+        }
         saveState.textContent = 'Enregistrement…';
         try {
             const data = await send(url, 'PUT', payload);

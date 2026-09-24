@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Enums\OutingStatus;
 use App\Models\Association;
 use App\Models\Boat;
+use App\Models\Member;
 use App\Models\Outing;
 use App\Services\BoatLayoutGenerator;
 use Database\Seeders\CrewRoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class OutingTest extends TestCase
@@ -144,5 +146,24 @@ class OutingTest extends TestCase
         $this->get(route('crew-plans.edit', [$outing, $plan]))
             ->assertOk()
             ->assertSee('&quot;wind_direction&quot;:90,&quot;wind_strength&quot;:14', false);
+    }
+
+    public function test_offline_outing_shell_and_lookup_by_device_uuid(): void
+    {
+        $this->seed(CrewRoleSeeder::class);
+        $user = $this->signInPatron();
+        $boat = $this->boatWithConfigurations($user->association);
+        Member::factory()->for($user->association)->create(['first_name' => 'Ludovic']);
+
+        $this->get(route('outings.offline'))->assertOk()->assertSee('Ludovic')->assertSee($boat->name)->assertSee('data-plan-templates', false);
+
+        $uuid = (string) Str::uuid();
+        $this->post(route('outings.store'), ['uuid' => $uuid, 'type' => 'entrainement', 'title' => 'Créée hors ligne', 'date' => today()->toDateString()]);
+        $outing = Outing::where('uuid', $uuid)->sole();
+
+        $this->get(route('outings.by-uuid', $uuid))->assertRedirect(route('outings.show', $outing));
+        $this->get(route('outings.by-uuid', (string) Str::uuid()))->assertNotFound();
+        $this->post(route('outings.store'), ['uuid' => $uuid, 'type' => 'entrainement', 'title' => 'Doublon', 'date' => today()->toDateString()])
+            ->assertSessionHasErrors('uuid');
     }
 }

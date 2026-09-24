@@ -44,6 +44,8 @@ Route::middleware('auth')->group(function () {
     Route::put('/profil/mot-de-passe', [ProfileController::class, 'updatePassword'])->name('profile.password');
 
     // Sorties, appel et plans d'équipage (admin + patrons).
+    Route::get('/sorties/hors-ligne', [OutingController::class, 'offline'])->name('outings.offline');
+    Route::get('/sorties/par-identifiant/{uuid}', [OutingController::class, 'byUuid'])->whereUuid('uuid')->name('outings.by-uuid');
     Route::resource('sorties', OutingController::class)
         ->parameters(['sorties' => 'outing'])
         ->names('outings');

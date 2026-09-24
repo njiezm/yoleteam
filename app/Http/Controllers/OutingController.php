@@ -119,6 +119,32 @@ class OutingController extends Controller
         ]);
     }
 
+    /**
+     * Shell of an outing created offline (cached by the service worker): appel and crew plans are rendered
+     * client-side from the queued outing until it reaches the server.
+     */
+    public function offline(Request $request, CrewPlanEditorData $editorData): View
+    {
+        $associationId = $request->user()->association_id;
+        $boats = Boat::query()->forAssociation($associationId)->where('is_active', true)->with('configurations.positions.crewRole')->orderBy('name')->get();
+
+        return view('outings.offline', [
+            'members' => Member::query()->forAssociation($associationId)->active()->with('crewRoles')->orderBy('first_name')->orderBy('last_name')->get(),
+            'editorMembers' => $editorData->members(null, null, $associationId),
+            'boats' => $boats,
+            'planTemplates' => $boats->mapWithKeys(fn (Boat $boat) => [$boat->id => $editorData->template($boat, $associationId)]),
+            'windOptions' => CrewPlanPresenter::windOptions(),
+        ]);
+    }
+
+    /** Opens an outing from the uuid generated on the device (once it has been synced). */
+    public function byUuid(Request $request, string $uuid): RedirectResponse
+    {
+        $outing = Outing::query()->forAssociation($request->user()->association_id)->where('uuid', $uuid)->firstOrFail();
+
+        return redirect()->route('outings.show', $outing);
+    }
+
     public function edit(Request $request, Outing $outing): View
     {
         return view('outings.edit', [

@@ -60,21 +60,59 @@ class CrewPlanEditorData
     }
 
     /**
+     * Editor data for a boat of an outing that only exists on the device (created offline): the page fills in
+     * the outing uuid, title and wind from the queued outing.
+     *
+     * @return array<string, mixed>
+     */
+    public function template(Boat $boat, int $associationId): array
+    {
+        $boat->loadMissing('configurations.positions.crewRole');
+        $configuration = $boat->configurations->firstWhere('is_default', true) ?? $boat->configurations->first();
+
+        return [
+            'plan' => [
+                'uuid' => null,
+                'label' => $boat->name,
+                'status' => 'brouillon',
+                'version' => 1,
+                'configuration_id' => $configuration?->id,
+                'wind_direction' => null,
+                'wind_strength' => null,
+                'bwa_side' => 'babord',
+                'fond_count' => 1,
+                'max_fonds' => BoatLayoutGenerator::MAX_FONDS,
+                'update_url' => null,
+                'create' => ['outing_uuid' => null, 'boat_id' => $boat->id],
+            ],
+            'boatColor' => $boat->color(),
+            'configurations' => $boat->configurations
+                ->map(fn (BoatConfiguration $configuration) => $this->presenter->configuration($configuration))
+                ->values(),
+            'roles' => $this->presenter->roles(),
+            'members' => [],
+            'assignments' => (object) [],
+            'attendanceRecorded' => false,
+            'attendanceUrl' => null,
+        ];
+    }
+
+    /**
      * Active members (plus those already seated on this plan), with their appel status and the boat they
      * already sit on for this outing.
      *
      * @return Collection<int, array<string, mixed>>
      */
-    public function members(Outing $outing, ?CrewPlan $plan, int $associationId): Collection
+    public function members(?Outing $outing, ?CrewPlan $plan, int $associationId): Collection
     {
-        $statuses = $outing->attendances->pluck('status', 'member_id');
+        $statuses = $outing?->attendances->pluck('status', 'member_id') ?? collect();
         $assignedHere = $plan?->assignments->pluck('member_id') ?? collect();
 
         $elsewhere = CrewAssignment::query()
-            ->whereIn('crew_plan_id', $outing->crewPlans->where('id', '!=', $plan?->id)->pluck('id'))
+            ->whereIn('crew_plan_id', $outing?->crewPlans->where('id', '!=', $plan?->id)->pluck('id') ?? [])
             ->get(['crew_plan_id', 'member_id'])
             ->mapWithKeys(fn (CrewAssignment $assignment) => [
-                $assignment->member_id => $outing->crewPlans->firstWhere('id', $assignment->crew_plan_id)->boat->name,
+                $assignment->member_id => $outing?->crewPlans->firstWhere('id', $assignment->crew_plan_id)?->boat->name,
             ]);
 
         return Member::query()

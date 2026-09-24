@@ -28,6 +28,8 @@ class OutingRequest extends FormRequest
         $creating = $this->route('outing') === null;
 
         return [
+            // Outings created offline keep the uuid generated on the device (appel and plans point to it).
+            'uuid' => [$creating ? 'nullable' : 'exclude', 'uuid', Rule::unique('outings', 'uuid')],
             'type' => ['required', Rule::enum(OutingType::class)],
             'title' => ['required', 'string', 'max:255'],
             'date' => ['required', 'date'],

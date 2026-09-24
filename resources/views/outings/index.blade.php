@@ -64,6 +64,8 @@
         </div>
     </div>
 
+    <div class="hidden mb-5" data-offline-outings></div>
+
     @if ($outings->isEmpty())
         <x-empty-state title="Aucune sortie" text="Programmez un entraînement ou une régate pour faire l’appel et composer les équipages.">
             <a href="{{ route('outings.create') }}" class="btn-primary btn-sm"><x-icon name="plus" class="w-4 h-4" />Nouvelle sortie</a>

@@ -42,6 +42,7 @@ export function mountOfflineForms(root = document) {
         const fields = formToObject(form, event.submitter);
         const method = (fields._method || form.method || 'POST').toUpperCase();
         const id = uuid();
+        if (form.hasAttribute('data-offline-uuid')) fields.uuid = id;
         await enqueue({
             key: `form:${id}`,
             entity: 'form',
@@ -51,7 +52,7 @@ export function mountOfflineForms(root = document) {
         });
 
         toast('Enregistré sur l’appareil : envoyé au serveur au retour du réseau.', 'sun');
-        const next = form.dataset.offlineRedirect;
+        const next = form.dataset.offlineRedirect?.replace('{uuid}', id);
         setTimeout(() => { if (next) location.href = next; else history.back(); }, 900);
     });
 }

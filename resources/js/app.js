@@ -4,16 +4,24 @@ import { mountCrewPlanEditor } from './crew-plan-editor';
 import { mountSync } from './sync';
 import { mountOfflineForms } from './offline-forms';
 import { mountOfflineOuting } from './offline-outing';
+import { mountOfflineOutingList, mountOfflineOutingPage } from './offline-outing-page';
 
 document.addEventListener('DOMContentLoaded', () => {
     mountDrawings();
     mountSync();
     mountOfflineForms();
 
-    const outingPlans = document.querySelector('[data-outing-plans]');
+    // Pages of outings created offline mount their widgets themselves ([data-deferred]).
+    const offlineOuting = document.querySelector('[data-offline-outing-page]');
+    if (offlineOuting) mountOfflineOutingPage(offlineOuting);
+
+    const outingPlans = document.querySelector('[data-outing-plans]:not([data-deferred])');
     if (outingPlans) mountOfflineOuting(outingPlans);
 
-    const attendance = document.querySelector('[data-attendance]');
+    const offlineOutings = document.querySelector('[data-offline-outings]');
+    if (offlineOutings) mountOfflineOutingList(offlineOutings);
+
+    const attendance = document.querySelector('[data-attendance]:not([data-deferred])');
     if (attendance) mountAttendance(attendance);
 
     const editor = document.querySelector('[data-crew-editor]');

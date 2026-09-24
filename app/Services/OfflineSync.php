@@ -156,15 +156,20 @@ class OfflineSync
         $plan = CrewPlan::query()
             ->where('uuid', $operation->entity_uuid)
             ->whereHas('outing', fn ($query) => $query->forAssociation($user->association_id))
-            ->first()
-            ?? $this->createOfflinePlan($operation, $user)
-            ?? throw ValidationException::withMessages(['entity_uuid' => 'Plan d’équipage introuvable.']);
+            ->first();
+
+        // A plan that was just created (offline plan, or empty plan made by the outing form replay) takes the device state as is.
+        $fresh = false;
+        if (! $plan) {
+            [$plan, $fresh] = $this->createOfflinePlan($operation, $user)
+                ?? throw ValidationException::withMessages(['entity_uuid' => 'Plan d’équipage introuvable.']);
+        }
 
         $data = Validator::make($operation->payload, UpdateCrewPlanRequest::rulesFor($plan, $user->association_id), UpdateCrewPlanRequest::messagesFor())
             ->after(fn ($validator) => UpdateCrewPlanRequest::checkPositions($validator))
             ->validate();
 
-        if (! $force && $this->isNewer($plan->updated_at, $operation->client_updated_at)) {
+        if (! $force && ! $fresh && $this->isNewer($plan->updated_at, $operation->client_updated_at)) {
             return [
                 'server_version' => $plan->version,
                 'server_status' => $plan->status->value,
@@ -187,7 +192,10 @@ class OfflineSync
      * A crew plan created offline on the outing page: create it with the client uuid, or reuse the plan
      * someone created online meanwhile for the same outing and boat (then last write wins as usual).
      */
-    private function createOfflinePlan(SyncOperation $operation, User $user): ?CrewPlan
+    /**
+     * @return array{CrewPlan, bool}|null the plan, and whether it is untouched (no crew placed yet)
+     */
+    private function createOfflinePlan(SyncOperation $operation, User $user): ?array
     {
         $create = $operation->payload['create'] ?? null;
         if (! is_array($create)) {
@@ -201,7 +209,7 @@ class OfflineSync
 
         $existing = $outing->crewPlans()->where('boat_id', $boat->id)->first();
         if ($existing) {
-            return $existing;
+            return [$existing, $existing->assignments()->doesntExist() && ! $existing->isValidated()];
         }
 
         $configuration = $boat->configurations()->find($operation->payload['boat_configuration_id'] ?? null)
@@ -220,7 +228,7 @@ class OfflineSync
             'updated_at' => $operation->client_updated_at->copy()->subSecond(),
         ])->save();
 
-        return $plan;
+        return [$plan, true];
     }
 
     /**

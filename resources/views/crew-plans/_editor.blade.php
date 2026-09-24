@@ -13,7 +13,7 @@
     <div data-crew-editor="{{ $editor ? json_encode($editor, JSON_UNESCAPED_UNICODE) : '' }}">
         <div class="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
             <div class="flex flex-wrap items-center gap-2">
-                @if ($outing->crewPlans->count() > 1)
+                @if ($plan && $outing && $outing->crewPlans->count() > 1)
                     <div class="seg">
                         @foreach ($outing->crewPlans as $other)
                             <a href="{{ route('crew-plans.edit', [$outing, $other]) }}" @class(['on' => $other->id === $plan->id])><i class="w-2.5 h-2.5 rounded-full" style="background: {{ $other->boat->color() }}"></i>{{ $other->boat->name }}</a>

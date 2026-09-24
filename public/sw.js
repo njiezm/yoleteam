@@ -11,7 +11,7 @@ const NETWORK_TIMEOUT = 5000;
 // Screens kept for offline use (cached when visited online, and pre-cached from the dashboard).
 const OFFLINE_ROUTES = [
     /^\/$/,
-    /^\/sorties(\/ajouter)?$/,
+    /^\/sorties(\/ajouter|\/hors-ligne)?$/,
     /^\/sorties\/\d+(\/modifier|\/appel)?$/,
     /^\/sorties\/\d+\/equipages\/\d+(\/modifier)?$/,
     /^\/membres(\/ajouter)?$/,

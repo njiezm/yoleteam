@@ -336,4 +336,38 @@ class SyncTest extends TestCase
         $this->assertSame(1, Outing::count());
         $this->assertNotSoftDeleted($this->outing);
     }
+
+    public function test_outing_created_offline_receives_its_appel_and_plans_in_the_same_batch(): void
+    {
+        $this->seed(CrewRoleSeeder::class);
+        $boat = Boat::factory()->for($this->user->association)->create();
+        $configuration = $boat->configurations()->create(['name' => '1 voile', 'sail_count' => 1, 'bwa_count' => 9, 'is_default' => true]);
+        app(BoatLayoutGenerator::class)->generate($configuration);
+        $outingUuid = (string) Str::uuid();
+        $at = fn (int $minutesAgo) => now()->subMinutes($minutesAgo)->toIso8601String();
+
+        $create = $this->formOperation('POST', '/sorties', [
+            'uuid' => $outingUuid, 'type' => 'entrainement', 'title' => 'Sortie improvisée', 'date' => today()->toDateString(), 'boats' => [$boat->id],
+        ]);
+        $create['client_updated_at'] = $at(10);
+
+        $this->push([
+            $create,
+            ['id' => (string) Str::uuid(), 'entity' => 'attendance', 'entity_uuid' => $outingUuid, 'payload' => ['member_id' => $this->member->id, 'status' => 'present'], 'client_updated_at' => $at(8)],
+            ['id' => (string) Str::uuid(), 'entity' => 'crew_plan', 'entity_uuid' => (string) Str::uuid(), 'client_updated_at' => $at(5), 'payload' => [
+                'boat_configuration_id' => $configuration->id,
+                'assignments' => [['position_id' => $configuration->positions()->where('code', 'patron')->value('id'), 'member_id' => $this->member->id]],
+                'create' => ['outing_uuid' => $outingUuid, 'boat_id' => $boat->id],
+            ]],
+        ])
+            ->assertJsonPath('results.0.status', 'applied')
+            ->assertJsonPath('results.1.status', 'applied')
+            // The outing form already created an empty plan for the ticked boat: the offline plan fills it, no conflict.
+            ->assertJsonPath('results.2.status', 'applied');
+
+        $outing = Outing::where('uuid', $outingUuid)->sole();
+        $this->assertSame(1, $outing->attendances()->count());
+        $this->assertSame(1, $outing->crewPlans()->count());
+        $this->assertSame($this->member->id, $outing->crewPlans()->first()->assignments()->value('member_id'));
+    }
 }

@@ -94,7 +94,7 @@ class DashboardController extends Controller
 
         return collect([
             $path('attendance.today'), $path('crew-plans.today'), $path('sync.index'),
-            $path('outings.index'), $path('outings.create'), $path('members.index'), $path('races.index'),
+            $path('outings.index'), $path('outings.create'), $path('outings.offline'), $path('members.index'), $path('races.index'),
             $path('boats.index'), $path('history.index'), $path('more'), $path('profile.edit'),
         ])
             ->when(Gate::allows('manage'), fn ($urls) => $urls->push($path('members.create')))
