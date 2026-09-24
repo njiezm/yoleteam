@@ -23,6 +23,7 @@ class UserController extends Controller
     {
         abort_unless($user->association_id === $request->user()->association_id, 404);
         abort_if($user->is($request->user()), 403, 'Vous ne pouvez pas supprimer votre propre compte.');
+        abort_if($user->isSuperAdmin() && ! $request->user()->isSuperAdmin(), 403, 'Seul un super admin peut supprimer ce compte.');
 
         $user->delete();
 

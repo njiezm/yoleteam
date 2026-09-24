@@ -24,7 +24,8 @@ use function Laravel\Prompts\text;
     {--ville= : Commune}
     {--nom= : Nom du premier administrateur}
     {--email= : E-mail du premier administrateur}
-    {--password= : Mot de passe (sinon demandé)}')]
+    {--password= : Mot de passe (sinon demandé)}
+    {--super-admin : Crée ce premier compte en super admin (plateforme) plutôt qu’en administrateur}')]
 #[Description('Prépare une installation réelle : postes d’équipage, association et premier compte bureau')]
 class InstallCommand extends Command
 {
@@ -65,12 +66,12 @@ class InstallCommand extends Command
                 'name' => $data['nom'],
                 'email' => $data['email'],
                 'password' => $data['password'],
-                'role' => UserRole::Admin,
+                'role' => $this->option('super-admin') ? UserRole::SuperAdmin : UserRole::Admin,
                 'email_verified_at' => now(),
             ]);
         });
 
-        $this->info("Compte bureau créé pour {$user->email} ({$user->association->name}).");
+        $this->info(($user->isSuperAdmin() ? 'Compte super admin' : 'Compte bureau')." créé pour {$user->email} ({$user->association->name}).");
         $this->line('Connectez-vous, puis ajoutez les yoles, les membres et les patrons depuis l’application.');
 
         return self::SUCCESS;

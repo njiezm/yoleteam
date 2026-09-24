@@ -16,6 +16,9 @@ use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RaceResultController;
 use App\Http\Controllers\RaceStageController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SuperAdmin\AssociationController as SuperAdminAssociationController;
+use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
+use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -100,5 +103,20 @@ Route::middleware('auth')->group(function () {
         Route::put('/parametres', [SettingsController::class, 'update'])->name('settings.update');
         Route::post('/parametres/utilisateurs', [UserController::class, 'store'])->name('users.store');
         Route::delete('/parametres/utilisateurs/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
+
+    // Plateforme : toutes les associations et tous les comptes (super admin uniquement).
+    Route::middleware('can:super-admin')->prefix('super-admin')->name('super-admin.')->group(function () {
+        Route::get('/', SuperAdminDashboardController::class)->name('dashboard');
+
+        Route::resource('associations', SuperAdminAssociationController::class)->except(['show']);
+        Route::post('/associations/{association}/ouvrir', [SuperAdminAssociationController::class, 'switch'])->name('associations.switch');
+
+        Route::resource('utilisateurs', SuperAdminUserController::class)
+            ->parameters(['utilisateurs' => 'user'])
+            ->names('users')
+            ->except(['show']);
+        Route::post('/utilisateurs/{user}/activation', [SuperAdminUserController::class, 'toggle'])->name('users.toggle');
+        Route::post('/utilisateurs/{user}/reinitialisation', [SuperAdminUserController::class, 'sendResetLink'])->name('users.reset-link');
     });
 });

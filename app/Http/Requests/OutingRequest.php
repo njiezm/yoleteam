@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\OutingStatus;
 use App\Enums\OutingType;
+use App\Enums\SeaState;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -34,6 +35,12 @@ class OutingRequest extends FormRequest
             'end_time' => ['nullable', 'date_format:H:i', 'after:start_time'],
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'wind_direction' => ['nullable', 'integer', 'between:0,359'],
+            'wind_strength' => ['nullable', 'integer', 'between:0,80'],
+            'wind_gusts' => ['nullable', 'integer', 'between:0,99'],
+            'sea_state' => ['nullable', Rule::enum(SeaState::class)],
+            'swell_m' => ['nullable', 'numeric', 'between:0,15'],
+            'weather' => ['nullable', 'string', 'max:255'],
             'status' => [$creating ? 'exclude' : 'required', Rule::enum(OutingStatus::class)],
             'race_stage_id' => [
                 'nullable', 'integer',
@@ -54,6 +61,12 @@ class OutingRequest extends FormRequest
         return [
             'boats.*' => 'yole',
             'race_stage_id' => 'étape de régate',
+            'wind_direction' => 'direction du vent',
+            'wind_strength' => 'force du vent',
+            'wind_gusts' => 'rafales',
+            'sea_state' => 'état de la mer',
+            'swell_m' => 'houle',
+            'weather' => 'météo',
         ];
     }
 }

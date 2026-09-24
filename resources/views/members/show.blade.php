@@ -126,4 +126,10 @@
             @endif
         </div>
     </div>
+
+    @can('manage')
+        <x-delete-zone :action="route('members.destroy', $member)" label="Supprimer ce membre"
+                       :confirm="'Supprimer '.$member->full_name.' ?'"
+                       hint="Il n’apparaîtra plus dans l’appel ni dans les équipages. Pour une pause, décochez plutôt « Membre actif » dans sa fiche." />
+    @endcan
 </x-layouts.app>

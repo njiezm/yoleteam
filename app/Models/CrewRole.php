@@ -55,11 +55,11 @@ class CrewRole extends Model
     {
         return match ($this->code) {
             self::PATRON => 'PAT',
-            self::AIDE_PATRON => 'AID',
+            self::AIDE_PATRON => 'PAG',
             self::PREMIERE_CORDE => 'C1',
             self::DEUXIEME_CORDE => 'C2',
             self::ECOUTE => 'ÉCO',
-            self::DRESSEUR => 'DR',
+            self::DRESSEUR => 'BD',
             self::ECOPEUR => 'ÉCP',
             default => mb_strtoupper(mb_substr($this->label, 0, 3)),
         };

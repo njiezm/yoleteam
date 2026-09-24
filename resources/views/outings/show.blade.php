@@ -26,6 +26,9 @@
         @if ($outing->location)
             <span class="text-sm font-semibold flex items-center gap-1.5 text-slate-700"><x-icon name="pin" class="w-4 h-4 text-slate-400" />{{ $outing->location }}</span>
         @endif
+        @if ($outing->conditionsSummary())
+            <span class="text-sm font-semibold flex items-center gap-1.5 text-slate-700"><x-icon name="wind" class="w-4 h-4 text-slate-400" />{{ $outing->conditionsSummary() }}</span>
+        @endif
         @if ($outing->raceStage)
             <a href="{{ route('races.show', $outing->raceStage->race) }}" class="text-sm font-semibold flex items-center gap-1.5 text-navy-700"><x-icon name="trophy" class="w-4 h-4 text-slate-400" />{{ $outing->raceStage->race->name }} · {{ $outing->raceStage->name }}</a>
         @endif
@@ -98,4 +101,8 @@
             <x-empty-state class="lg:col-span-2" icon="boat" title="Aucune yole disponible" text="Ajoutez une yole ou remettez-en une en service pour composer un équipage." />
         @endif
     </div>
+
+    <x-delete-zone :action="route('outings.destroy', $outing)" label="Supprimer la sortie"
+                   :confirm="'Supprimer la sortie « '.$outing->title.' », son appel et ses plans d’équipage ?'"
+                   hint="L’appel et les plans d’équipage de cette sortie seront supprimés. Pour garder l’historique, passez-la plutôt en « Annulée »." />
 </x-layouts.app>

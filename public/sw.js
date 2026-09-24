@@ -16,7 +16,10 @@ const OFFLINE_ROUTES = [
     /^\/sorties\/\d+\/equipages\/\d+(\/modifier)?$/,
     /^\/synchronisation$/,
 ];
+// Menu shortcuts that redirect to the current outing ("Appel", "Équipage"): kept with the page they lead to.
+const SHORTCUTS = ['/appel', '/equipage'];
 const isOfflineRoute = (path) => OFFLINE_ROUTES.some((re) => re.test(path));
+const isShortcut = (path) => SHORTCUTS.includes(path);
 const pageKey = (url) => new URL(url, self.location.origin).origin + new URL(url, self.location.origin).pathname;
 
 self.addEventListener('install', (event) => {
@@ -38,7 +41,32 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+// A redirected response cannot answer a navigation: keep a plain copy of the final page under the shortcut.
+async function storeShortcut(url, response) {
+    const target = new URL(response.url).pathname;
+    if (!response.ok || response.type !== 'basic' || !isOfflineRoute(target)) return response;
+    const copy = response.clone();
+    try {
+        const body = await copy.blob();
+        const plain = () => new Response(body, { status: copy.status, statusText: copy.statusText, headers: copy.headers });
+        const cache = await caches.open(PAGES);
+        await cache.put(pageKey(url), plain());
+        await cache.put(pageKey(target), plain());
+    } catch {
+        // Storage full or unavailable: serve the page anyway.
+    }
+    return response;
+}
+
 async function storePage(url, response) {
+    if (isShortcut(new URL(url, self.location.origin).pathname)) {
+        if (response.redirected) return storeShortcut(url, response);
+        // Navigations get the redirect unfollowed ("opaqueredirect"): fetch the final page separately for the cache.
+        if (response.type === 'opaqueredirect') {
+            fetch(url, { credentials: 'same-origin' }).then((followed) => storeShortcut(url, followed)).catch(() => null);
+        }
+        return response;
+    }
     if (response.ok && !response.redirected && response.type === 'basic') {
         // Storage can be full or unavailable: a failed cache write must never break the page that is being served.
         await caches.open(PAGES)
@@ -50,7 +78,7 @@ async function storePage(url, response) {
 
 async function navigate(request) {
     const path = new URL(request.url).pathname;
-    const network = fetch(request).then((response) => (isOfflineRoute(path) ? storePage(request.url, response) : response));
+    const network = fetch(request).then((response) => (isOfflineRoute(path) || isShortcut(path) ? storePage(request.url, response) : response));
 
     try {
         return await Promise.race([
@@ -106,7 +134,7 @@ self.addEventListener('message', (event) => {
 
     if (type === 'cache-pages') {
         event.waitUntil(Promise.all(urls
-            .filter((url) => isOfflineRoute(new URL(url, self.location.origin).pathname))
+            .filter((url) => { const path = new URL(url, self.location.origin).pathname; return isOfflineRoute(path) || isShortcut(path); })
             .map((url) => fetch(url, { credentials: 'same-origin' }).then((response) => storePage(url, response)).catch(() => null))));
     }
 });

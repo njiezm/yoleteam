@@ -92,6 +92,9 @@ class DashboardController extends Controller
             route('outings.show', $outing, false),
             route('attendance.edit', $outing, false),
             ...$outing->crewPlans->map(fn ($plan) => route('crew-plans.edit', [$outing, $plan], false)),
-        ])->prepend(route('sync.index', [], false))->values()->all();
+        ])->prepend(route('sync.index', [], false))
+            ->prepend(route('crew-plans.today', [], false))
+            ->prepend(route('attendance.today', [], false))
+            ->values()->all();
     }
 }

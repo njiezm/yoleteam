@@ -31,6 +31,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
+            'disabled_at' => 'datetime',
+            'last_login_at' => 'datetime',
         ];
     }
 
@@ -60,5 +62,16 @@ class User extends Authenticatable
     public function isPatron(): bool
     {
         return $this->role === UserRole::Patron;
+    }
+
+    /** Platform operator: every association and every account (see Gate "super-admin"). */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === UserRole::SuperAdmin;
+    }
+
+    public function isDisabled(): bool
+    {
+        return $this->disabled_at !== null;
     }
 }

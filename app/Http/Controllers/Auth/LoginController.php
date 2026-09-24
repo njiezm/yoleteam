@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureUserIsActive;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,13 +25,22 @@ class LoginController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        $disabled = false;
+        $isActive = function (User $user) use (&$disabled): bool {
+            $disabled = $user->isDisabled();
+
+            return ! $disabled;
+        };
+
+        // The callback only runs once the password matched, so "disabled" never reveals an unknown account.
+        if (! Auth::attemptWhen($credentials, $isActive, $request->boolean('remember'))) {
             throw ValidationException::withMessages([
-                'email' => 'Ces identifiants ne correspondent à aucun compte.',
+                'email' => $disabled ? EnsureUserIsActive::MESSAGE : 'Ces identifiants ne correspondent à aucun compte.',
             ]);
         }
 
         $request->session()->regenerate();
+        $request->user()->forceFill(['last_login_at' => now()])->save();
 
         return redirect()->intended(route('dashboard'));
     }

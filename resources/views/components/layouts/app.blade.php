@@ -16,7 +16,7 @@
         ['outings.index', 'calendar', 'Sorties', ['outings.*']],
         ['attendance.today', 'check-square', 'Appel', ['attendance.*']],
         ['crew-plans.today', 'boat', 'Équipage', ['crew-plans.*']],
-        ['more', 'more', 'Plus', ['more', 'members.*', 'boats.*', 'races.*', 'history.*', 'settings.*', 'sync.*', 'profile.*']],
+        ['more', 'more', 'Plus', ['more', 'members.*', 'boats.*', 'races.*', 'history.*', 'settings.*', 'sync.*', 'profile.*', 'super-admin.*']],
     ];
     $initials = collect(explode(' ', $user->name))->map(fn ($part) => mb_substr($part, 0, 1))->take(2)->join('');
 @endphp
@@ -49,6 +49,9 @@
                 <a href="{{ route('sync.index') }}" @class(['nav-link', 'on' => request()->routeIs('sync.*')])><x-icon name="refresh" class="w-[18px] h-[18px]" />Synchronisation<span class="ml-auto hidden chip bg-amber-400 text-navy-950 px-2 py-0.5" data-sync-count></span></a>
                 @can('manage')
                     <a href="{{ route('settings.edit') }}" @class(['nav-link', 'on' => request()->routeIs('settings.*')])><x-icon name="settings" class="w-[18px] h-[18px]" />Paramètres</a>
+                @endcan
+                @can('super-admin')
+                    <a href="{{ route('super-admin.dashboard') }}" @class(['nav-link', 'on' => request()->routeIs('super-admin.*')])><x-icon name="lock" class="w-[18px] h-[18px]" />Super admin</a>
                 @endcan
             </nav>
             <div class="rounded-2xl bg-white/5 p-3 flex items-center gap-3">

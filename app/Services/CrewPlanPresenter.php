@@ -165,8 +165,8 @@ class CrewPlanPresenter
         return $plan->assignments
             ->sortBy(fn (CrewAssignment $assignment) => $assignment->position->sort_order)
             ->groupBy(fn (CrewAssignment $assignment) => match (true) {
-                $assignment->position->side === BoatSide::Babord && $assignment->position->bwa_index !== null => 'Dresseurs bâbord',
-                $assignment->position->side === BoatSide::Tribord && $assignment->position->bwa_index !== null => 'Dresseurs tribord',
+                $assignment->position->side === BoatSide::Babord && $assignment->position->bwa_index !== null => 'Bwa dressés bâbord',
+                $assignment->position->side === BoatSide::Tribord && $assignment->position->bwa_index !== null => 'Bwa dressés tribord',
                 $assignment->position->y < 50 => 'Avant & gréement',
                 default => 'Arrière',
             });

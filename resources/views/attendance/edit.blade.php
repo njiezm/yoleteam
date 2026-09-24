@@ -17,7 +17,7 @@
                 <span class="w-12 h-12 shrink-0 rounded-2xl bg-navy-900 text-sun-400 grid place-items-center"><x-icon name="calendar" /></span>
                 <div class="min-w-0">
                     <p class="font-extrabold truncate">{{ $outing->title }}</p>
-                    <p class="text-xs muted truncate">{{ collect([$outing->time_range, $outing->location, $outing->crewPlans->map(fn ($plan) => $plan->boat->name)->join(', ')])->filter()->join(' · ') }}</p>
+                    <p class="text-xs muted truncate">{{ collect([$outing->time_range, $outing->location, $outing->crewPlans->map(fn ($plan) => $plan->boat->name)->join(', '), $outing->conditionsSummary()])->filter()->join(' · ') }}</p>
                 </div>
             </div>
             <div class="grid grid-cols-5 gap-2 lg:w-[520px]">

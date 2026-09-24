@@ -12,7 +12,7 @@ enum OutingType: string
     {
         return match ($this) {
             self::Entrainement => 'Entraînement',
-            self::Regate => 'Régate',
+            self::Regate => 'Course',
             self::SortieLibre => 'Sortie libre',
         };
     }

@@ -35,6 +35,13 @@
                     <x-icon name="right" class="w-4 h-4 text-slate-400" />
                 </a>
             @endcan
+            @can('super-admin')
+                <a href="{{ route('super-admin.dashboard') }}" class="flex items-center gap-3 px-4 py-3.5">
+                    <span class="w-9 h-9 rounded-xl bg-navy-50 text-navy-700 grid place-items-center"><x-icon name="lock" class="w-[18px] h-[18px]" /></span>
+                    <span class="flex-1 font-semibold">Super admin</span>
+                    <x-icon name="right" class="w-4 h-4 text-slate-400" />
+                </a>
+            @endcan
         </div>
 
         <form method="POST" action="{{ route('logout') }}" class="mt-4" data-logout>

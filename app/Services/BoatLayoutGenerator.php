@@ -42,7 +42,7 @@ class BoatLayoutGenerator
             $positions[] = $this->position(CrewRole::DEUXIEME_CORDE, 'deuxieme_corde', '2ème corde', BoatSide::Centre, null, 50, 20);
         }
 
-        // Bwa : dresseurs de chaque côté, du plus avant (1) au plus arrière.
+        // Bwa dressés de chaque côté, du plus avant (1) au plus arrière.
         for ($i = 1; $i <= $bwaCount; $i++) {
             $y = $bwaCount > 1
                 ? self::BWA_Y_START + ($i - 1) * (self::BWA_Y_END - self::BWA_Y_START) / ($bwaCount - 1)
@@ -52,7 +52,7 @@ class BoatLayoutGenerator
                 $positions[] = $this->position(
                     CrewRole::DRESSEUR,
                     "dresseur_{$side->value}_{$i}",
-                    "Dresseur {$side->label()} {$i}",
+                    'Bwa dressé '.mb_strtolower($side->label())." {$i}",
                     $side,
                     $i,
                     $side === BoatSide::Babord ? self::BABORD_X : self::TRIBORD_X,
@@ -65,12 +65,12 @@ class BoatLayoutGenerator
         $positions[] = $this->position(CrewRole::ECOUTE, 'ecoute', 'Écoute', BoatSide::Centre, null, 50, 60);
         $positions[] = $this->position(CrewRole::ECOPEUR, 'ecopeur', 'Écopeur', BoatSide::Centre, null, 50, 70);
 
-        // Arrière : aide(s)-patron et patron.
+        // Arrière : pagaie(s) et patron.
         if ($sailCount >= 2) {
-            $positions[] = $this->position(CrewRole::AIDE_PATRON, 'aide_patron_1', 'Aide-patron 1', BoatSide::Babord, null, 40, 84);
-            $positions[] = $this->position(CrewRole::AIDE_PATRON, 'aide_patron_2', 'Aide-patron 2', BoatSide::Tribord, null, 60, 84, true);
+            $positions[] = $this->position(CrewRole::AIDE_PATRON, 'aide_patron_1', 'Pagaie 1', BoatSide::Babord, null, 40, 84);
+            $positions[] = $this->position(CrewRole::AIDE_PATRON, 'aide_patron_2', 'Pagaie 2', BoatSide::Tribord, null, 60, 84, true);
         } else {
-            $positions[] = $this->position(CrewRole::AIDE_PATRON, 'aide_patron_1', 'Aide-patron', BoatSide::Centre, null, 50, 84);
+            $positions[] = $this->position(CrewRole::AIDE_PATRON, 'aide_patron_1', 'Pagaie', BoatSide::Centre, null, 50, 84);
         }
 
         $positions[] = $this->position(CrewRole::PATRON, 'patron', 'Patron', BoatSide::Centre, null, 50, 92);

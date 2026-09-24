@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\BoatRequest;
 use App\Models\Boat;
 use App\Models\BoatConfiguration;
+use App\Models\CrewAssignment;
+use App\Models\CrewPlan;
 use App\Services\BoatLayoutGenerator;
 use App\Services\CrewPlanPresenter;
 use Illuminate\Database\Eloquent\Builder;
@@ -76,6 +78,10 @@ class BoatController extends Controller
             'boat' => $boat,
             'configuration' => $configuration,
             'drawing' => $configuration ? $presenter->drawing($boat, $configuration, null, ['wind' => false]) : null,
+            'historyCount' => collect([
+                ($plans = $boat->crewPlans()->withTrashed()->count()) ? "{$plans} plan(s) d’équipage" : null,
+                ($results = $boat->raceResults()->count()) ? "{$results} résultat(s) de régate" : null,
+            ])->filter()->join(' et '),
         ]);
     }
 
@@ -87,20 +93,30 @@ class BoatController extends Controller
             ->with('status', 'Yole enregistrée');
     }
 
-    public function destroy(Boat $boat): RedirectResponse
+    /**
+     * A yole with history (crew plans, race results) is only deleted when the admin explicitly
+     * confirms that this history goes with it; otherwise "Indisponible" keeps everything.
+     */
+    public function destroy(Request $request, Boat $boat): RedirectResponse
     {
         $plans = $boat->crewPlans()->withTrashed()->count();
         $results = $boat->raceResults()->count();
 
-        if ($plans > 0 || $results > 0) {
+        if (($plans > 0 || $results > 0) && ! $request->boolean('with_history')) {
             return redirect()->route('boats.show', $boat)->withErrors([
-                'delete' => 'Impossible de supprimer cette yole : elle figure dans '
+                'delete' => 'Cette yole figure dans '
                     .collect([$plans ? "{$plans} plan(s) d’équipage" : null, $results ? "{$results} résultat(s) de régate" : null])->filter()->join(' et ')
-                    .'. Passez-la plutôt en « Indisponible ».',
+                    .'. Cochez la case pour les supprimer avec elle, ou passez-la plutôt en « Indisponible ».',
             ]);
         }
 
-        $boat->delete();
+        DB::transaction(function () use ($boat) {
+            $planIds = $boat->crewPlans()->withTrashed()->pluck('id');
+            CrewAssignment::withTrashed()->whereIn('crew_plan_id', $planIds)->forceDelete();
+            CrewPlan::withTrashed()->whereIn('id', $planIds)->forceDelete();
+            $boat->raceResults()->delete();
+            $boat->delete();
+        });
 
         return redirect()->route('boats.index')->with('status', 'Yole supprimée');
     }

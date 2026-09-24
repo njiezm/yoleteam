@@ -52,11 +52,11 @@ class MemberTest extends TestCase
             ->assertSee('Kévin Rosemain')
             ->assertSee('« Kéké »', false)
             ->assertSee('Rodrigue Céleste')
-            ->assertSee('Dresseur')
+            ->assertSee('Bwa dressé')
             ->assertSee('Écopeur')
             ->assertSee('78</b> kg · 183 cm', false)
             ->assertSee('50%')
-            ->assertSee('Dresseur · 1')
+            ->assertSee('Bwa dressé · 1')
             ->assertSee('Ajouter un membre');
     }
 
@@ -110,7 +110,7 @@ class MemberTest extends TestCase
         $boat = Boat::factory()->for($user->association)->create(['name' => 'Ti-Bwa']);
         $configuration = $boat->configurations()->create(['name' => 'Standard', 'bwa_count' => 3, 'is_default' => true]);
         $position = $configuration->positions()->create([
-            'crew_role_id' => $roles[CrewRole::DRESSEUR], 'code' => 'dresseur_babord_1', 'label' => 'Dresseur bâbord 1',
+            'crew_role_id' => $roles[CrewRole::DRESSEUR], 'code' => 'dresseur_babord_1', 'label' => 'Bwa dressé bâbord 1',
             'side' => 'babord', 'bwa_index' => 1, 'sort_order' => 1, 'x' => 10, 'y' => 40,
         ]);
         $plan = CrewPlan::create(['outing_id' => $regatta->id, 'boat_id' => $boat->id, 'boat_configuration_id' => $configuration->id]);
@@ -129,7 +129,7 @@ class MemberTest extends TestCase
             ->assertViewHas('streak', 3)
             ->assertSee('Régate du Robert')
             ->assertSee('Ti-Bwa')
-            ->assertSee('Dresseur bâbord 1 · extérieur')
+            ->assertSee('Bwa dressé bâbord 1 · extérieur')
             ->assertSee('Très bon dresseur par vent fort.')
             ->assertSee(route('members.edit', $member));
     }

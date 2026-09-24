@@ -51,7 +51,7 @@
         </div>
         <div class="flex gap-4 mt-3 text-[11px] muted">
             <span class="flex items-center gap-1.5"><i class="w-2 h-2 rounded-full bg-navy-500"></i>Entraînement</span>
-            <span class="flex items-center gap-1.5"><i class="w-2 h-2 rounded-full bg-sun-400"></i>Régate</span>
+            <span class="flex items-center gap-1.5"><i class="w-2 h-2 rounded-full bg-sun-400"></i>Course</span>
             <span class="flex items-center gap-1.5"><i class="w-2 h-2 rounded-full bg-sky-400"></i>Sortie libre</span>
         </div>
     </div>

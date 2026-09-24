@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Enums\OutingStatus;
 use App\Enums\OutingType;
+use App\Enums\SeaState;
 use App\Models\Concerns\BelongsToAssociation;
 use App\Models\Concerns\HasClientUuid;
+use App\Services\CrewPlanPresenter;
 use Database\Factories\OutingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'association_id', 'uuid', 'type', 'title', 'date', 'start_time', 'end_time', 'location',
+    'wind_direction', 'wind_strength', 'wind_gusts', 'sea_state', 'swell_m', 'weather',
     'status', 'race_stage_id', 'notes', 'created_by',
 ])]
 class Outing extends Model
@@ -31,6 +34,11 @@ class Outing extends Model
             'type' => OutingType::class,
             'status' => OutingStatus::class,
             'date' => 'date',
+            'wind_direction' => 'integer',
+            'wind_strength' => 'integer',
+            'wind_gusts' => 'integer',
+            'sea_state' => SeaState::class,
+            'swell_m' => 'decimal:1',
         ];
     }
 
@@ -57,6 +65,21 @@ class Outing extends Model
         return $query()->whereDate('date', today())->orderBy('start_time')->first()
             ?? $query()->whereDate('date', '>', today())->orderBy('date')->orderBy('start_time')->first()
             ?? $query()->whereDate('date', '<', today())->orderByDesc('date')->first();
+    }
+
+    /** "E-NE 15 nds (rafales 22) · mer agitée · houle 1,5 m" — null when nothing was entered. */
+    public function conditionsSummary(): ?string
+    {
+        $wind = $this->wind_direction !== null || $this->wind_strength !== null
+            ? trim('Vent '.CrewPlanPresenter::windLabel($this->wind_direction).($this->wind_strength !== null ? " {$this->wind_strength} nds" : '').($this->wind_gusts ? " (rafales {$this->wind_gusts})" : ''))
+            : null;
+
+        return collect([
+            $wind,
+            $this->sea_state ? 'mer '.mb_strtolower($this->sea_state->label()) : null,
+            $this->swell_m !== null ? 'houle '.str_replace('.', ',', (string) (float) $this->swell_m).' m' : null,
+            $this->weather,
+        ])->filter()->join(' · ') ?: null;
     }
 
     public function isToday(): bool

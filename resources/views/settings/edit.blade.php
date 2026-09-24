@@ -68,8 +68,12 @@
                             <p class="font-semibold text-sm truncate">{{ $user->name }}@if ($user->is(auth()->user())) <span class="muted font-normal">(vous)</span>@endif</p>
                             <p class="text-xs muted truncate">{{ $user->email }}</p>
                         </div>
-                        <span class="chip shrink-0 {{ $user->isAdmin() ? 'bg-navy-900 text-white' : 'bg-sun-100 text-amber-800' }}">{{ $user->isAdmin() ? 'Admin / bureau' : 'Patron' }}</span>
-                        @unless ($user->is(auth()->user()))
+                        @if ($user->isSuperAdmin())
+                            <span class="chip shrink-0 bg-sun-400 text-navy-950">Super admin</span>
+                        @else
+                            <span class="chip shrink-0 {{ $user->isAdmin() ? 'bg-navy-900 text-white' : 'bg-sun-100 text-amber-800' }}">{{ $user->isAdmin() ? 'Admin / bureau' : 'Patron' }}</span>
+                        @endif
+                        @unless ($user->is(auth()->user()) || ($user->isSuperAdmin() && ! auth()->user()->isSuperAdmin()))
                             <form method="POST" action="{{ route('users.destroy', $user) }}" onsubmit="return confirm(this.dataset.confirm)" data-confirm="Supprimer le compte de {{ $user->name }} ?">
                                 @csrf
                                 @method('DELETE')

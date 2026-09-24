@@ -2,7 +2,7 @@
 @php
     $types = [
         \App\Enums\OutingType::Entrainement->value => ['Entraînement', 'calendar'],
-        \App\Enums\OutingType::Regate->value => ['Régate', 'trophy'],
+        \App\Enums\OutingType::Regate->value => ['Course', 'trophy'],
         \App\Enums\OutingType::SortieLibre->value => ['Sortie libre', 'boat'],
     ];
     $currentType = old('type', $outing->type?->value ?? \App\Enums\OutingType::Entrainement->value);
@@ -36,6 +36,31 @@
         </div>
         <x-field label="Lieu" name="location" class="sm:col-span-2">
             <x-input name="location" :value="$outing->location" placeholder="Baie du François" />
+        </x-field>
+    </div>
+</section>
+
+<section class="card p-5 lg:p-6">
+    <h3 class="font-bold mb-1 flex items-center gap-2"><x-icon name="wind" class="w-4 h-4" />Conditions de navigation</h3>
+    <p class="text-xs muted mb-4">Facultatif — à remplir avant la sortie ou au retour. Le vent est repris par défaut dans les plans d’équipage.</p>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <x-field label="Vent (d’où il vient)" name="wind_direction">
+            <x-select name="wind_direction" :options="\App\Services\CrewPlanPresenter::windOptions()" :value="$outing->wind_direction" placeholder="—" />
+        </x-field>
+        <x-field label="Force (nœuds)" name="wind_strength">
+            <x-input name="wind_strength" type="number" min="0" max="80" inputmode="numeric" :value="$outing->wind_strength" placeholder="15" />
+        </x-field>
+        <x-field label="Rafales (nœuds)" name="wind_gusts">
+            <x-input name="wind_gusts" type="number" min="0" max="99" inputmode="numeric" :value="$outing->wind_gusts" placeholder="22" />
+        </x-field>
+        <x-field label="État de la mer" name="sea_state">
+            <x-select name="sea_state" :options="\App\Enums\SeaState::options()" :value="$outing->sea_state" placeholder="—" />
+        </x-field>
+        <x-field label="Houle (m)" name="swell_m">
+            <x-input name="swell_m" type="number" min="0" max="15" step="0.1" inputmode="decimal" :value="$outing->swell_m !== null ? (float) $outing->swell_m : null" placeholder="1,5" />
+        </x-field>
+        <x-field label="Météo" name="weather">
+            <x-input name="weather" :value="$outing->weather" placeholder="Grains passagers, soleil…" maxlength="255" />
         </x-field>
     </div>
 </section>

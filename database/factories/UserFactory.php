@@ -40,6 +40,16 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => ['role' => UserRole::Admin]);
     }
 
+    public function superAdmin(): static
+    {
+        return $this->state(fn (array $attributes) => ['role' => UserRole::SuperAdmin]);
+    }
+
+    public function disabled(): static
+    {
+        return $this->state(fn (array $attributes) => ['disabled_at' => now()]);
+    }
+
     /**
      * Indicate that the model's email address should be unverified.
      */

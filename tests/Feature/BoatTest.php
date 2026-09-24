@@ -8,6 +8,7 @@ use App\Models\Association;
 use App\Models\Boat;
 use App\Models\BoatConfiguration;
 use App\Models\CrewPlan;
+use App\Models\Member;
 use App\Models\Outing;
 use App\Models\Race;
 use App\Services\BoatLayoutGenerator;
@@ -53,8 +54,8 @@ class BoatTest extends TestCase
             ->assertOk()
             ->assertSee('Ti-Bwa · Configuration')
             ->assertSee('Postes (15)')
-            ->assertSee('Dresseur Bâbord 4')
-            ->assertSee('Aide-patron 2')
+            ->assertSee('Bwa dressé bâbord 4')
+            ->assertSee('Pagaie 2')
             ->assertSee(route('boats.configurations.update', [$boat, $boat->configurations()->where('is_default', true)->first()]))
             ->assertSee('Nouvelle configuration');
     }
@@ -68,7 +69,7 @@ class BoatTest extends TestCase
         $this->get(route('boats.show', [$boat, 'configuration' => $single->id]))
             ->assertOk()
             ->assertSee('Postes (11)')
-            ->assertDontSee('Dresseur Bâbord 4');
+            ->assertDontSee('Bwa dressé bâbord 4');
     }
 
     public function test_admin_can_create_a_boat_with_two_generated_configurations(): void
@@ -282,6 +283,29 @@ class BoatTest extends TestCase
         $this->delete(route('boats.destroy', $boat))->assertSessionHasErrors('delete');
 
         $this->assertModelExists($boat);
+    }
+
+    public function test_boat_with_history_is_deleted_when_the_history_is_confirmed(): void
+    {
+        $this->seed(CrewRoleSeeder::class);
+        $user = $this->signInAdmin();
+        $boat = $this->boatWithConfigurations($user->association, ['name' => 'Vieille yole']);
+        $outing = Outing::factory()->for($user->association)->create();
+        $plan = $outing->crewPlans()->create(['boat_id' => $boat->id, 'boat_configuration_id' => $boat->configurations->first()->id]);
+        $member = Member::factory()->for($user->association)->create();
+        $plan->assignments()->create(['boat_position_id' => $boat->configurations->first()->positions()->value('id'), 'member_id' => $member->id]);
+        $plan->assignments()->first()->delete();
+        $race = Race::create(['association_id' => $user->association_id, 'name' => 'Régate', 'type' => RaceType::Regate, 'season' => 2026, 'start_date' => '2026-05-01']);
+        $race->stages()->create(['number' => 1, 'name' => 'Manche 1', 'date' => '2026-05-01'])->results()->create(['boat_id' => $boat->id, 'rank' => 2]);
+
+        $this->get(route('boats.show', $boat))->assertOk()->assertSee('1 plan(s) d’équipage et 1 résultat(s) de régate');
+
+        $this->delete(route('boats.destroy', $boat), ['with_history' => 1])->assertRedirect(route('boats.index'));
+
+        $this->assertModelMissing($boat);
+        $this->assertSame(0, CrewPlan::withTrashed()->count());
+        $this->assertModelExists($member);
+        $this->assertModelExists($outing);
     }
 
     public function test_patron_can_view_boats_read_only(): void

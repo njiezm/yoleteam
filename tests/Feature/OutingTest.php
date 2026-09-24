@@ -113,4 +113,36 @@ class OutingTest extends TestCase
         $this->put(route('outings.update', $foreign), [])->assertNotFound();
         $this->get('/sorties/abc')->assertNotFound();
     }
+
+    public function test_navigation_conditions_are_saved_and_shown(): void
+    {
+        $user = $this->signInPatron();
+        $outing = Outing::factory()->for($user->association)->create();
+
+        $this->put(route('outings.update', $outing), [
+            'type' => 'entrainement', 'title' => 'Vent fort', 'date' => today()->toDateString(), 'status' => 'planifiee',
+            'wind_direction' => 67, 'wind_strength' => 18, 'wind_gusts' => 25, 'sea_state' => 'agitee', 'swell_m' => '1.5', 'weather' => 'Grains passagers',
+        ])->assertRedirect(route('outings.show', $outing));
+
+        $this->get(route('outings.show', $outing))
+            ->assertOk()
+            ->assertSee('Vent E-NE 18 nds (rafales 25) · mer agitée · houle 1,5 m · Grains passagers');
+
+        $this->put(route('outings.update', $outing), [
+            'type' => 'entrainement', 'title' => 'Vent fort', 'date' => today()->toDateString(), 'status' => 'planifiee', 'sea_state' => 'tempete', 'swell_m' => 40,
+        ])->assertSessionHasErrors(['sea_state', 'swell_m']);
+    }
+
+    public function test_crew_plan_editor_takes_the_outing_wind_by_default(): void
+    {
+        $this->seed(CrewRoleSeeder::class);
+        $user = $this->signInPatron();
+        $boat = $this->boatWithConfigurations($user->association);
+        $outing = Outing::factory()->for($user->association)->create(['wind_direction' => 90, 'wind_strength' => 14]);
+        $plan = $outing->crewPlans()->create(['boat_id' => $boat->id, 'boat_configuration_id' => $boat->configurations->first()->id]);
+
+        $this->get(route('crew-plans.edit', [$outing, $plan]))
+            ->assertOk()
+            ->assertSee('&quot;wind_direction&quot;:90,&quot;wind_strength&quot;:14', false);
+    }
 }

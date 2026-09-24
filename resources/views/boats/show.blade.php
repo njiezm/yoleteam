@@ -140,9 +140,15 @@
                         @error('delete')
                             <p class="text-sm text-red-600 font-semibold mb-3 flex items-start gap-1.5"><x-icon name="alert" class="w-4 h-4 mt-0.5" />{{ $message }}</p>
                         @enderror
-                        <form method="POST" action="{{ route('boats.destroy', $boat) }}" onsubmit="return confirm(this.dataset.confirm)" data-confirm="Supprimer définitivement la yole {{ $boat->name }} ?">
+                        <form method="POST" action="{{ route('boats.destroy', $boat) }}" onsubmit="return confirm(this.dataset.confirm)" data-confirm="Supprimer définitivement la yole {{ $boat->name }} ? Cette action est irréversible.">
                             @csrf
                             @method('DELETE')
+                            @if ($historyCount)
+                                <label class="flex items-start gap-2 text-sm mb-3 p-3 rounded-xl bg-red-50 text-red-800">
+                                    <input type="checkbox" name="with_history" value="1" class="w-4 h-4 mt-0.5 accent-red-600">
+                                    <span>Supprimer aussi son historique : {{ $historyCount }}. Pour le garder, décochez « Opérationnelle » ci-dessus à la place.</span>
+                                </label>
+                            @endif
                             <button class="btn-danger btn-sm"><x-icon name="trash" class="w-4 h-4" />Supprimer la yole</button>
                         </form>
                     </div>

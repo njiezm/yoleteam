@@ -33,6 +33,7 @@
             $plan->configuration->name,
             $plan->wind_direction !== null ? 'vent '.\App\Services\CrewPlanPresenter::windLabel($plan->wind_direction).($plan->wind_strength ? ' '.$plan->wind_strength.' nds' : '') : null,
             round($balance['total']).' kg à bord',
+            $outing->sea_state ? 'mer '.mb_strtolower($outing->sea_state->label()) : null,
         ])->filter()->join(' · ');
     @endphp
 

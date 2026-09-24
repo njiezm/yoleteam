@@ -32,13 +32,16 @@ class AppServiceProvider extends ServiceProvider
         Route::resourceVerbs(['create' => 'ajouter', 'edit' => 'modifier']);
 
         // Integer keys only: a non-numeric id would otherwise reach PostgreSQL and fail with a 500 instead of a 404.
-        foreach (['outing', 'crewPlan', 'member', 'boat', 'configuration', 'race', 'stage', 'user'] as $parameter) {
+        foreach (['outing', 'crewPlan', 'member', 'boat', 'configuration', 'race', 'stage', 'user', 'association'] as $parameter) {
             Route::pattern($parameter, '[0-9]+');
         }
         Route::pattern('syncOperation', '[0-9a-fA-F-]{36}');
 
         // Admin / bureau: members, boats, regattas, users and settings. Patrons run outings, attendance and crew plans.
-        Gate::define('manage', fn (User $user): bool => $user->isAdmin());
+        Gate::define('manage', fn (User $user): bool => $user->isAdmin() || $user->isSuperAdmin());
+
+        // Platform operator: every association and every account (/super-admin).
+        Gate::define('super-admin', fn (User $user): bool => $user->isSuperAdmin());
 
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by(
             Str::transliterate(Str::lower($request->string('email')).'|'.$request->ip())

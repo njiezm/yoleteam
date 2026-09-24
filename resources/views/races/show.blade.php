@@ -218,4 +218,10 @@
             </div>
         </section>
     @endcan
+
+    @can('manage')
+        <x-delete-zone :action="route('races.destroy', $race)" label="Supprimer la régate"
+                       :confirm="'Supprimer définitivement « '.$race->name.' » et ses résultats ?'"
+                       hint="Les étapes et tous les résultats saisis seront supprimés." />
+    @endcan
 </x-layouts.app>
