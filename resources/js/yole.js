@@ -83,11 +83,13 @@ export function yoleSVG(opts) {
         s += `<rect x="146" y="${Y(y) - 4}" width="108" height="8" rx="4" fill="url(#${id}-wood)" opacity=".85"/>`;
     });
 
-    // Masts and sails seen from above.
-    const masts = config.sail_count >= 2 ? [15, 38] : [22];
+    // Masts and sails seen from above. 2 voiles: masts at the bow and about a third of the hull; misaine: the
+    // big mast is stepped forward (faux mât). Sails always blow to leeward, opposite the bwa dressés.
+    const masts = config.sail_count >= 2 ? [15, 38] : [14];
+    const leeward = windward === 'babord' ? 1 : -1;
     masts.forEach((m, i) => {
         const my = Y(m);
-        const d = `M200 ${my} Q${300 - i * 10} ${my + 70} ${318 - i * 12} ${my + 150}`;
+        const d = `M200 ${my} Q${200 + leeward * (100 - i * 10)} ${my + 70} ${200 + leeward * (118 - i * 12)} ${my + 150}`;
         s += `<path d="${d}" fill="none" stroke="#fff" stroke-width="12" opacity=".75" stroke-linecap="round"/>
               <path d="${d}" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="3 4"/>
               <circle cx="200" cy="${my}" r="7" fill="#0B2545" stroke="#fff" stroke-width="2"/>`;

@@ -1,6 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <clipPath id="sun"><circle cx="256" cy="258" r="178"/></clipPath>
+  </defs>
   <rect width="512" height="512" rx="112" fill="#0B2545"/>
-  <g transform="translate(96 88) scale(13.3)" fill="none" stroke="#F5B700" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 2v14M12 2l7 12H12M12 5 6 14h6M2 18c2 2 4 3 10 3s8-1 10-3l-2-2H4z"/>
+  <circle cx="256" cy="258" r="178" fill="#F5B700"/>
+  <!-- Mer -->
+  <g clip-path="url(#sun)">
+    <path d="M60 372 C140 344 200 398 276 374 C348 351 400 336 470 360 L470 460 L60 460 Z" fill="#0EA5E9"/>
+    <path d="M60 396 C140 370 204 420 280 398 C350 378 404 364 470 384 L470 460 L60 460 Z" fill="#0B6FA4" opacity=".55"/>
+  </g>
+  <!-- Voile carrée tendue par la livarde (vergue en diagonale) -->
+  <path d="M176 124 L322 106 L342 328 L196 322 Z" fill="#0B2545"/>
+  <line x1="322" y1="98" x2="346" y2="350" stroke="#0B2545" stroke-width="12" stroke-linecap="round"/>
+  <line x1="178" y1="120" x2="338" y2="324" stroke="#F5B700" stroke-width="9" stroke-linecap="round"/>
+  <!-- Coque basse -->
+  <path d="M112 350 C200 368 320 364 410 340 C402 360 390 372 372 378 C290 396 190 394 132 376 C122 369 116 360 112 350 Z" fill="#0B2545"/>
+  <!-- Bwa dressés au vent, avec leurs équipiers -->
+  <g stroke="#FFFFFF" stroke-width="9" stroke-linecap="round">
+    <line x1="236" y1="356" x2="132" y2="334"/>
+    <line x1="296" y1="352" x2="196" y2="326"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="124" cy="320" r="14"/>
+    <circle cx="188" cy="312" r="14"/>
   </g>
 </svg>
