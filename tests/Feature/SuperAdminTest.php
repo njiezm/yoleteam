@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\Association;
 use App\Models\Boat;
+use App\Models\CrewRole;
 use App\Models\Member;
 use App\Models\Outing;
 use App\Models\User;
@@ -497,7 +498,23 @@ class SuperAdminTest extends TestCase
         $this->artisan('yoleteam:super-admin', ['email' => 'bureau@test.fr'])->assertSuccessful();
         $this->assertSame(UserRole::SuperAdmin, $user->fresh()->role);
 
-        $this->artisan('yoleteam:super-admin', ['email' => 'inconnu@test.fr'])->assertFailed();
+        $this->artisan('yoleteam:super-admin', ['email' => 'nouveau@test.fr', '--nom' => 'X', '--password' => 'court'])->assertFailed();
+        $this->assertFalse(User::where('email', 'nouveau@test.fr')->exists());
+    }
+
+    public function test_super_admin_command_creates_the_account_and_what_the_app_needs_on_an_empty_database(): void
+    {
+        $this->artisan('yoleteam:super-admin', ['email' => 'Contact@Exemple.fr', '--nom' => 'Plateforme', '--password' => 'mot-de-passe-long'])
+            ->assertSuccessful();
+
+        $user = User::sole();
+        $this->assertSame('contact@exemple.fr', $user->email);
+        $this->assertSame(UserRole::SuperAdmin, $user->role);
+        $this->assertStringContainsString('Baie des Mulets', $user->association->name);
+        $this->assertSame(7, CrewRole::count());
+
+        $this->post(route('login'), ['email' => 'contact@exemple.fr', 'password' => 'mot-de-passe-long'])->assertRedirect(route('dashboard'));
+        $this->get(route('super-admin.dashboard'))->assertOk();
     }
 
     public function test_installer_can_create_the_first_account_as_super_admin(): void
