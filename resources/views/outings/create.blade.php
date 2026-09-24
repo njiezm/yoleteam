@@ -7,7 +7,7 @@
         <button form="outing-form" class="btn-primary w-full h-12">Créer la sortie</button>
     </x-slot:sticky>
 
-    <form id="outing-form" method="POST" action="{{ route('outings.store') }}" class="max-w-3xl space-y-5">
+    <form id="outing-form" method="POST" action="{{ route('outings.store') }}" class="max-w-3xl space-y-5" data-offline-form="Nouvelle sortie" data-offline-redirect="{{ route('outings.index') }}">
         @csrf
         @include('outings._form')
 

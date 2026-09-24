@@ -7,7 +7,7 @@
         <button form="outing-form" class="btn-primary w-full h-12">Enregistrer</button>
     </x-slot:sticky>
 
-    <form id="outing-form" method="POST" action="{{ route('outings.update', $outing) }}" class="max-w-3xl space-y-5">
+    <form id="outing-form" method="POST" action="{{ route('outings.update', $outing) }}" class="max-w-3xl space-y-5" data-offline-form="Sortie modifiée : {{ $outing->title }}" data-offline-redirect="{{ route('outings.show', $outing) }}">
         @csrf
         @method('PUT')
         @include('outings._form', ['statusField' => true])

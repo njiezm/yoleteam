@@ -2,19 +2,28 @@
 // Pages: network first, cached copy when the network is down or too slow. Assets: cache first.
 // Writes (PUT/POST) are never intercepted: offline changes go through the IndexedDB queue (resources/js/offline-queue.js).
 
-const PAGES = 'yt-pages-v1';
+const PAGES = 'yt-pages-v1'; // same name as in resources/js/sync.js
 const ASSETS = 'yt-assets-v1';
 const OFFLINE_PAGE = '/offline.html';
 const STATIC = [OFFLINE_PAGE, '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 const NETWORK_TIMEOUT = 5000;
 
-// Only the screens used on the water are kept offline.
+// Screens kept for offline use (cached when visited online, and pre-cached from the dashboard).
 const OFFLINE_ROUTES = [
     /^\/$/,
-    /^\/sorties\/\d+$/,
-    /^\/sorties\/\d+\/appel$/,
+    /^\/sorties(\/ajouter)?$/,
+    /^\/sorties\/\d+(\/modifier|\/appel)?$/,
     /^\/sorties\/\d+\/equipages\/\d+(\/modifier)?$/,
+    /^\/membres(\/ajouter)?$/,
+    /^\/membres\/\d+(\/modifier)?$/,
+    /^\/regates$/,
+    /^\/regates\/\d+$/,
+    /^\/yoles$/,
+    /^\/yoles\/\d+$/,
+    /^\/historique$/,
     /^\/synchronisation$/,
+    /^\/plus$/,
+    /^\/profil$/,
 ];
 // Menu shortcuts that redirect to the current outing ("Appel", "Équipage"): kept with the page they lead to.
 const SHORTCUTS = ['/appel', '/equipage'];

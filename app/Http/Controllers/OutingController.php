@@ -10,6 +10,7 @@ use App\Models\Member;
 use App\Models\Outing;
 use App\Models\RaceStage;
 use App\Services\AttendanceStats;
+use App\Services\CrewPlanEditorData;
 use App\Services\CrewPlanPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -89,7 +90,7 @@ class OutingController extends Controller
         return redirect()->route('outings.show', $outing)->with('status', 'Sortie créée');
     }
 
-    public function show(Request $request, Outing $outing, AttendanceStats $stats, CrewPlanPresenter $presenter): View
+    public function show(Request $request, Outing $outing, AttendanceStats $stats, CrewPlanPresenter $presenter, CrewPlanEditorData $editorData): View
     {
         $outing->load([
             'creator',
@@ -99,17 +100,21 @@ class OutingController extends Controller
 
         $associationId = $request->user()->association_id;
         $engagedBoatIds = $outing->crewPlans->pluck('boat_id');
+        $availableBoats = Boat::query()->forAssociation($associationId)
+            ->where('is_active', true)
+            ->whereNotIn('id', $engagedBoatIds)
+            ->with('configurations.positions.crewRole')
+            ->orderBy('name')
+            ->get();
 
         return view('outings.show', [
             'outing' => $outing,
             'counts' => $stats->forOuting($outing),
             'activeMembers' => Member::query()->forAssociation($associationId)->active()->count(),
-            'availableBoats' => Boat::query()->forAssociation($associationId)
-                ->where('is_active', true)
-                ->whereNotIn('id', $engagedBoatIds)
-                ->with('configurations')
-                ->orderBy('name')
-                ->get(),
+            'availableBoats' => $availableBoats,
+            // Editor data for each boat that can still be engaged: lets the patron create a plan offline.
+            'planTemplates' => $availableBoats->mapWithKeys(fn (Boat $boat) => [$boat->id => $editorData->build($outing, $boat, null, $associationId)]),
+            'windOptions' => CrewPlanPresenter::windOptions(),
             'presenter' => $presenter,
         ]);
     }

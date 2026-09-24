@@ -56,7 +56,8 @@
         </ol>
     </div>
 
-    <div id="equipages" class="grid gap-5 lg:grid-cols-2 mt-5">
+    <div id="equipages" class="grid gap-5 lg:grid-cols-2 mt-5" data-outing-plans data-outing-uuid="{{ $outing->uuid }}">
+        <div class="lg:col-span-2 hidden" data-offline-plans></div>
         @foreach ($outing->crewPlans as $plan)
             @php($total = $plan->configuration->positions->count())
             @php($filled = $plan->assignments->count())
@@ -83,7 +84,7 @@
         @endforeach
 
         @if ($availableBoats->isNotEmpty())
-            <form method="POST" action="{{ route('crew-plans.store', $outing) }}" class="card p-5 border-dashed border-2 border-slate-300 bg-slate-50/50 flex flex-col justify-center gap-3">
+            <form method="POST" action="{{ route('crew-plans.store', $outing) }}" data-plan-create class="card p-5 border-dashed border-2 border-slate-300 bg-slate-50/50 flex flex-col justify-center gap-3">
                 @csrf
                 <p class="font-bold flex items-center gap-2"><x-icon name="plus" class="w-4 h-4" />Engager une yole</p>
                 <div class="flex flex-wrap gap-2">
@@ -105,4 +106,13 @@
     <x-delete-zone :action="route('outings.destroy', $outing)" label="Supprimer la sortie"
                    :confirm="'Supprimer la sortie « '.$outing->title.' », son appel et ses plans d’équipage ?'"
                    hint="L’appel et les plans d’équipage de cette sortie seront supprimés. Pour garder l’historique, passez-la plutôt en « Annulée »." />
+
+    @if ($planTemplates->isNotEmpty())
+        {{-- Offline: "Créer le plan" opens the editor right here, the plan is created on the server at sync. --}}
+        <script type="application/json" data-plan-templates>@json($planTemplates, JSON_UNESCAPED_UNICODE)</script>
+        <template data-offline-editor>
+            @include('crew-plans._editor', ['editor' => null, 'plan' => null, 'inline' => true])
+        </template>
+        <div class="hidden" data-offline-editor-host></div>
+    @endif
 </x-layouts.app>

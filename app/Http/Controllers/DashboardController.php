@@ -11,6 +11,7 @@ use App\Models\Race;
 use App\Services\AttendanceStats;
 use App\Services\CrewPlanPresenter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -73,7 +74,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * Pages the service worker keeps for offline use: appel and crew plans of the outings of the coming week.
+     * Pages the service worker keeps for offline use: the coming week's outings (appel, crew plans, edit form),
+     * members, regattas, boats and the pages used to fill forms offline.
      *
      * @return list<string>
      */
@@ -88,13 +90,24 @@ class DashboardController extends Controller
             ->limit(6)
             ->get();
 
-        return $outings->flatMap(fn (Outing $outing) => [
-            route('outings.show', $outing, false),
-            route('attendance.edit', $outing, false),
-            ...$outing->crewPlans->map(fn ($plan) => route('crew-plans.edit', [$outing, $plan], false)),
-        ])->prepend(route('sync.index', [], false))
-            ->prepend(route('crew-plans.today', [], false))
-            ->prepend(route('attendance.today', [], false))
-            ->values()->all();
+        $path = fn (string $name, mixed $parameters = []) => route($name, $parameters, false);
+
+        return collect([
+            $path('attendance.today'), $path('crew-plans.today'), $path('sync.index'),
+            $path('outings.index'), $path('outings.create'), $path('members.index'), $path('races.index'),
+            $path('boats.index'), $path('history.index'), $path('more'), $path('profile.edit'),
+        ])
+            ->when(Gate::allows('manage'), fn ($urls) => $urls->push($path('members.create')))
+            ->concat($outings->flatMap(fn (Outing $outing) => [
+                $path('outings.show', $outing),
+                $path('outings.edit', $outing),
+                $path('attendance.edit', $outing),
+                ...$outing->crewPlans->map(fn ($plan) => $path('crew-plans.edit', [$outing, $plan])),
+            ]))
+            ->concat(Member::query()->forAssociation($associationId)->active()->pluck('id')->map(fn (int $id) => $path('members.show', $id)))
+            ->concat(Race::query()->forAssociation($associationId)->where('season', today()->year)->pluck('id')->map(fn (int $id) => $path('races.show', $id)))
+            ->concat(Boat::query()->forAssociation($associationId)->where('is_active', true)->pluck('id')->map(fn (int $id) => $path('boats.show', $id)))
+            ->values()
+            ->all();
     }
 }

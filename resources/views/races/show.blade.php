@@ -144,7 +144,7 @@
                             <x-icon name="right" class="w-4 h-4 text-slate-400 transition group-open:rotate-90" />
                         </summary>
                         <div class="border-t border-slate-100 p-4 lg:p-5 space-y-6">
-                            <form method="POST" action="{{ route('races.stages.results.update', [$race, $stage]) }}">
+                            <form method="POST" action="{{ route('races.stages.results.update', [$race, $stage]) }}" data-offline-form="Résultats : {{ $race->name }} · {{ $stage->name }}" data-offline-redirect="{{ route('races.show', $race) }}">
                                 @csrf
                                 @method('PUT')
                                 <input type="hidden" name="_form" value="{{ $resultsKey }}">
@@ -209,7 +209,7 @@
                     </details>
                 @endforeach
 
-                <form method="POST" action="{{ route('races.stages.store', $race) }}" class="card p-4 lg:p-5">
+                <form method="POST" action="{{ route('races.stages.store', $race) }}" class="card p-4 lg:p-5" data-offline-form="Nouvelle étape : {{ $race->name }}" data-offline-redirect="{{ route('races.show', $race) }}">
                     @csrf
                     <p class="font-bold mb-3">Ajouter une étape</p>
                     @include('races._stage-fields', ['stage' => null, 'formKey' => 'new-stage', 'bag' => $errors->getBag('newStage'), 'id' => 'new-stage', 'defaultNumber' => ($race->stages->max('number') ?? 0) + 1])

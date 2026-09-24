@@ -6,7 +6,7 @@
     $level = (string) old('level', $member->level?->value);
     $isActive = $hasOld ? (bool) old('is_active') : (bool) $member->is_active;
 @endphp
-<form id="member-form" method="POST" action="{{ $action }}" class="max-w-4xl space-y-5">
+<form id="member-form" method="POST" action="{{ $action }}" class="max-w-4xl space-y-5" data-offline-form="{{ $method === 'PUT' ? 'Membre modifié : '.$member->full_name : 'Nouveau membre' }}" data-offline-redirect="{{ route('members.index') }}">
     @csrf
     @if ($method !== 'POST')
         @method($method)

@@ -117,7 +117,7 @@ async function render() {
         ? operations.map((op) => `<a href="${e(op.url)}" class="px-5 py-3 flex items-center gap-3 hover:bg-slate-50">
               <span class="w-9 h-9 shrink-0 rounded-xl grid place-items-center bg-amber-100 text-amber-700">${svg('clock', 'w-4 h-4')}</span>
               <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">${e(op.label)}</p>
-                <p class="text-xs muted">${op.entity === 'attendance' ? 'Présence' : 'Plan d’équipage'} · modifié ${e(formatTime(op.client_updated_at))} sur cet appareil</p></div>
+                <p class="text-xs muted">${({ attendance: 'Présence', crew_plan: 'Plan d’équipage', form: 'Formulaire' })[op.entity] ?? 'Modification'} · modifié ${e(formatTime(op.client_updated_at))} sur cet appareil</p></div>
               <span class="chip bg-amber-100 text-amber-800">En attente</span></a>`).join('')
         : '<p class="px-5 pb-5 text-sm muted">Aucune modification en attente.</p>';
 

@@ -16,8 +16,7 @@ const ICON = {
 const icon = (name, cls = 'w-4 h-4') => `<svg class="${cls} shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICON[name]}"/></svg>`;
 const kg = (value) => `${Math.round(value)} kg`;
 
-export function mountCrewPlanEditor(root) {
-    const data = JSON.parse(root.dataset.crewEditor);
+export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEditor)) {
     const { roles, configurations, members } = data;
     const memberById = new Map(members.map((m) => [m.id, m]));
     const drawingMembers = Object.fromEntries(members.map((m) => [m.id, { initials: m.initials, short: m.short }]));
@@ -35,6 +34,7 @@ export function mountCrewPlanEditor(root) {
         version: data.plan.version,
         dirty: false,
         offline: false,
+        validateRequested: false,
         timer: null,
         pending: null,
     };
@@ -62,7 +62,17 @@ export function mountCrewPlanEditor(root) {
             .map(([code, a]) => ({ position: positionByCode(code), a }))
             .filter(({ position }) => position)
             .map(({ position, a }) => ({ position_id: position.id, member_id: a.member_id, bwa_placement: position.role === 'dresseur' ? (a.placement || null) : null })),
+        ...(data.plan.create ? { create: data.plan.create } : {}),
+        ...(S.validateRequested ? { validate: true } : {}),
     });
+
+    const queueOffline = async (state) => {
+        const label = `Plan d’équipage · ${data.plan.label}${data.plan.create ? ' (créé hors ligne)' : ''}${S.validateRequested ? ' · à valider' : ''}`;
+        await enqueue({ key: queueKey, entity: 'crew_plan', entity_uuid: data.plan.uuid, payload: state, label });
+        S.offline = true;
+        setSaveState(S.validateRequested ? 'Sur l’appareil · à valider' : 'Sur l’appareil');
+        return 'offline';
+    };
 
     const setSaveState = (text) => $$('[data-save-state]').forEach((el) => { el.textContent = text; });
 
@@ -76,6 +86,8 @@ export function mountCrewPlanEditor(root) {
         S.dirty = false;
         setSaveState('Enregistrement…');
         const state = payload();
+        // A plan that does not exist on the server yet can only live in the queue until the next sync.
+        if (!data.plan.update_url) return queueOffline(state);
         S.pending = send(data.plan.update_url, 'PUT', state);
         try {
             const result = await S.pending;
@@ -89,10 +101,7 @@ export function mountCrewPlanEditor(root) {
         } catch (error) {
             if (error.offline) {
                 // No network: keep the whole plan state on the device, sync.js replays it later.
-                await enqueue({ key: queueKey, entity: 'crew_plan', entity_uuid: data.plan.uuid, payload: state, label: `Plan d’équipage · ${data.plan.label}` });
-                S.offline = true;
-                setSaveState('Sur l’appareil');
-                return 'offline';
+                return queueOffline(state);
             }
             S.dirty = true;
             setSaveState('Non enregistré');
@@ -323,9 +332,18 @@ export function mountCrewPlanEditor(root) {
                 if (Object.keys(S.assignments).length && confirm('Retirer tous les membres de la yole ?')) { S.assignments = {}; S.selected = null; changed(); }
                 break;
             case 'validate': {
+                if (!data.plan.update_url || !navigator.onLine) {
+                    // Offline: remember the request, the server validates the plan when the queue is synced.
+                    if (!Object.keys(S.assignments).length) { toast('Placez au moins un équipier avant de valider.', 'error'); return; }
+                    S.validateRequested = true;
+                    S.dirty = true;
+                    await saveNow();
+                    toast('Validation enregistrée sur l’appareil : appliquée au retour du réseau.', 'sun');
+                    return;
+                }
                 const saved = await saveNow();
                 if (!saved) return;
-                if (saved === 'offline') { toast('Plan gardé sur l’appareil : la validation sera possible au retour du réseau.', 'sun'); return; }
+                if (saved === 'offline') { S.validateRequested = true; S.dirty = true; await saveNow(); toast('Validation enregistrée sur l’appareil : appliquée au retour du réseau.', 'sun'); return; }
                 const b = stats();
                 const modal = document.querySelector('[data-validate-modal]');
                 modal.querySelector('[data-validate-summary]').textContent = `${config().name} · ${b.filled}/${b.positions} postes · ${kg(b.total)} à bord. Le plan sera figé pour cette sortie (il reste modifiable en le rouvrant).`;
@@ -336,6 +354,7 @@ export function mountCrewPlanEditor(root) {
                 break;
             }
             case 'close-modal': document.querySelector('[data-validate-modal]').classList.replace('grid', 'hidden'); break;
+            case 'close-inline': await saveNow(); location.reload(); break;
         }
     });
 
@@ -398,6 +417,7 @@ export function mountCrewPlanEditor(root) {
         S.wind = { dir: state.wind_direction, kts: state.wind_strength };
         S.bwaSide = state.bwa_side || S.bwaSide;
         S.fondCount = state.fond_count ?? S.fondCount;
+        S.validateRequested = Boolean(state.validate);
         S.assignments = Object.fromEntries(state.assignments
             .map((a) => [configuration.positions.find((p) => p.id === a.position_id)?.code, { member_id: a.member_id, placement: a.bwa_placement }])
             .filter(([code]) => code));

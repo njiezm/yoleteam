@@ -243,4 +243,97 @@ class SyncTest extends TestCase
         $this->getJson(route('sync.token'))->assertUnauthorized();
         $this->postJson(route('sync.store'), [])->assertUnauthorized();
     }
+
+    public function test_a_crew_plan_created_offline_is_created_then_filled_and_validated(): void
+    {
+        $this->seed(CrewRoleSeeder::class);
+        $boat = Boat::factory()->for($this->user->association)->create();
+        $configuration = $boat->configurations()->create(['name' => '2 voiles', 'sail_count' => 2, 'bwa_count' => 8, 'is_default' => true]);
+        app(BoatLayoutGenerator::class)->generate($configuration);
+        $patron = $configuration->positions()->where('code', 'patron')->value('id');
+        $planUuid = (string) Str::uuid();
+
+        $this->push([[
+            'id' => (string) Str::uuid(),
+            'entity' => 'crew_plan',
+            'entity_uuid' => $planUuid,
+            'payload' => [
+                'boat_configuration_id' => $configuration->id, 'bwa_side' => 'tribord', 'fond_count' => 1, 'validate' => true,
+                'assignments' => [['position_id' => $patron, 'member_id' => $this->member->id]],
+                'create' => ['outing_uuid' => $this->outing->uuid, 'boat_id' => $boat->id],
+            ],
+            'client_updated_at' => now()->subMinutes(2)->toIso8601String(),
+        ]])->assertJsonPath('results.0.status', 'applied');
+
+        $plan = CrewPlan::sole();
+        $this->assertSame($planUuid, $plan->uuid);
+        $this->assertSame($boat->id, $plan->boat_id);
+        $this->assertTrue($plan->isValidated());
+        $this->assertSame($this->member->id, $plan->assignments()->value('member_id'));
+    }
+
+    public function test_offline_plan_creation_reuses_a_plan_created_online_meanwhile(): void
+    {
+        $plan = $this->crewPlan();
+
+        $this->push([[
+            'id' => (string) Str::uuid(),
+            'entity' => 'crew_plan',
+            'entity_uuid' => (string) Str::uuid(),
+            'payload' => [
+                'boat_configuration_id' => $plan->boat_configuration_id, 'assignments' => [],
+                'create' => ['outing_uuid' => $this->outing->uuid, 'boat_id' => $plan->boat_id],
+            ],
+            'client_updated_at' => now()->addMinute()->toIso8601String(),
+        ]])->assertJsonPath('results.0.status', 'applied');
+
+        $this->assertSame(1, CrewPlan::count());
+    }
+
+    /** @param  array<string, mixed>  $fields */
+    private function formOperation(string $method, string $url, array $fields): array
+    {
+        return [
+            'id' => (string) Str::uuid(),
+            'entity' => 'form',
+            'entity_uuid' => (string) Str::uuid(),
+            'payload' => ['method' => $method, 'url' => $url, 'fields' => $fields, 'label' => 'Test'],
+            'client_updated_at' => now()->subMinute()->toIso8601String(),
+        ];
+    }
+
+    public function test_forms_filled_offline_are_replayed_through_their_route(): void
+    {
+        $this->push([
+            $this->formOperation('PUT', route('outings.update', $this->outing, false), [
+                'type' => 'entrainement', 'title' => 'Vent fort', 'date' => today()->toDateString(), 'status' => 'planifiee', 'sea_state' => 'agitee',
+            ]),
+            $this->formOperation('POST', route('outings.store', [], false), [
+                'type' => 'entrainement', 'title' => 'Sortie créée hors ligne', 'date' => today()->addDay()->toDateString(),
+            ]),
+        ])->assertJsonPath('results.0.status', 'applied')->assertJsonPath('results.1.status', 'applied');
+
+        $this->assertSame('agitee', $this->outing->fresh()->sea_state->value);
+        $this->assertTrue(Outing::where('title', 'Sortie créée hors ligne')->exists());
+    }
+
+    public function test_replayed_forms_keep_validation_and_permissions(): void
+    {
+        $this->push([
+            $this->formOperation('POST', route('outings.store', [], false), ['type' => 'entrainement']),
+            // Patrons cannot create members, offline or not.
+            $this->formOperation('POST', route('members.store', [], false), ['first_name' => 'A', 'last_name' => 'B', 'level' => 'debutant']),
+            // Only whitelisted forms can be replayed.
+            $this->formOperation('POST', route('users.store', [], false), ['name' => 'X']),
+            $this->formOperation('DELETE', route('outings.destroy', $this->outing, false), []),
+        ])
+            ->assertJsonPath('results.0.status', 'rejected')
+            ->assertJsonPath('results.1.status', 'rejected')
+            ->assertJsonPath('results.1.message', 'Action non autorisée pour ce compte.')
+            ->assertJsonPath('results.2.status', 'rejected')
+            ->assertJsonPath('results.3.status', 'rejected');
+
+        $this->assertSame(1, Outing::count());
+        $this->assertNotSoftDeleted($this->outing);
+    }
 }

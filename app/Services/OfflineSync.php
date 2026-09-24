@@ -3,15 +3,19 @@
 namespace App\Services;
 
 use App\Enums\AttendanceStatus;
+use App\Enums\CrewPlanStatus;
 use App\Enums\SyncAction;
 use App\Enums\SyncStatus;
 use App\Http\Requests\UpdateCrewPlanRequest;
 use App\Models\Attendance;
+use App\Models\Boat;
 use App\Models\CrewPlan;
 use App\Models\Outing;
 use App\Models\SyncOperation;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -27,7 +31,17 @@ use Illuminate\Validation\ValidationException;
  */
 class OfflineSync
 {
-    public const ENTITIES = ['attendance', 'crew_plan'];
+    public const ENTITIES = ['attendance', 'crew_plan', 'form'];
+
+    /**
+     * Forms that can be filled offline and replayed as-is through their normal route (same validation,
+     * authorization and tenant scoping as online).
+     */
+    public const REPLAYABLE_ROUTES = [
+        'outings.store', 'outings.update',
+        'members.store', 'members.update',
+        'races.stages.store', 'races.stages.results.update',
+    ];
 
     public function __construct(
         private readonly AttendanceRecorder $recorder,
@@ -88,6 +102,7 @@ class OfflineSync
                 $conflict = match ($operation->entity) {
                     'attendance' => $this->attendance($operation, $user, $force),
                     'crew_plan' => $this->crewPlan($operation, $user, $force),
+                    'form' => $this->form($operation),
                 };
 
                 $operation->forceFill($conflict === null
@@ -142,6 +157,7 @@ class OfflineSync
             ->where('uuid', $operation->entity_uuid)
             ->whereHas('outing', fn ($query) => $query->forAssociation($user->association_id))
             ->first()
+            ?? $this->createOfflinePlan($operation, $user)
             ?? throw ValidationException::withMessages(['entity_uuid' => 'Plan d’équipage introuvable.']);
 
         $data = Validator::make($operation->payload, UpdateCrewPlanRequest::rulesFor($plan, $user->association_id), UpdateCrewPlanRequest::messagesFor())
@@ -158,6 +174,108 @@ class OfflineSync
 
         $plan = $this->crewPlanSync->sync($plan, $data);
         $plan->forceFill(['updated_at' => $force ? now() : $operation->client_updated_at])->save();
+
+        // "Valider" pressed offline: validate once the state is applied (a plan needs at least one seat).
+        if (! empty($operation->payload['validate']) && $plan->assignments()->exists()) {
+            $plan->validate($user);
+        }
+
+        return null;
+    }
+
+    /**
+     * A crew plan created offline on the outing page: create it with the client uuid, or reuse the plan
+     * someone created online meanwhile for the same outing and boat (then last write wins as usual).
+     */
+    private function createOfflinePlan(SyncOperation $operation, User $user): ?CrewPlan
+    {
+        $create = $operation->payload['create'] ?? null;
+        if (! is_array($create)) {
+            return null;
+        }
+
+        $outing = Outing::query()->forAssociation($user->association_id)->where('uuid', $create['outing_uuid'] ?? null)->first()
+            ?? throw ValidationException::withMessages(['entity_uuid' => 'Sortie introuvable.']);
+        $boat = Boat::query()->forAssociation($user->association_id)->where('is_active', true)->find($create['boat_id'] ?? null)
+            ?? throw ValidationException::withMessages(['entity_uuid' => 'Yole introuvable ou indisponible.']);
+
+        $existing = $outing->crewPlans()->where('boat_id', $boat->id)->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        $configuration = $boat->configurations()->find($operation->payload['boat_configuration_id'] ?? null)
+            ?? $boat->configurations()->where('is_default', true)->first()
+            ?? $boat->configurations()->firstOrFail();
+
+        // A soft-deleted plan still holds the (outing, boat) unique key: bring it back under the new uuid.
+        $plan = CrewPlan::withTrashed()->firstOrNew(['outing_id' => $outing->id, 'boat_id' => $boat->id]);
+        $plan->forceFill([
+            'uuid' => $operation->entity_uuid,
+            'boat_configuration_id' => $configuration->id,
+            'status' => CrewPlanStatus::Brouillon,
+            'created_by' => $plan->created_by ?? $user->id,
+            'deleted_at' => null,
+            // Older than any device change so the replayed state applies.
+            'updated_at' => $operation->client_updated_at->copy()->subSecond(),
+        ])->save();
+
+        return $plan;
+    }
+
+    /**
+     * Replays a form submitted offline through the HTTP kernel, as the signed-in user.
+     */
+    private function form(SyncOperation $operation): ?array
+    {
+        $payload = $operation->payload;
+        $method = strtoupper((string) ($payload['method'] ?? 'POST'));
+        $path = '/'.ltrim((string) parse_url((string) ($payload['url'] ?? ''), PHP_URL_PATH), '/');
+
+        if (! in_array($method, ['POST', 'PUT', 'PATCH'], true)) {
+            throw ValidationException::withMessages(['form' => 'Formulaire non pris en charge hors ligne.']);
+        }
+
+        try {
+            $route = app('router')->getRoutes()->match(Request::create($path, $method));
+        } catch (\Throwable) {
+            throw ValidationException::withMessages(['form' => 'Adresse de formulaire inconnue.']);
+        }
+
+        if (! in_array($route->getName(), self::REPLAYABLE_ROUTES, true)) {
+            throw ValidationException::withMessages(['form' => 'Formulaire non pris en charge hors ligne.']);
+        }
+
+        $current = app('request');
+        $fields = collect($payload['fields'] ?? [])->except(['_token', '_method'])->all();
+        // Only the host and client details are carried over: the sync call itself is JSON, the replay is a form post.
+        $server = ['HTTP_HOST' => $current->getHttpHost(), 'HTTPS' => $current->isSecure() ? 'on' : 'off', 'REMOTE_ADDR' => $current->ip()];
+        $replay = Request::create($path, $method, $fields, $current->cookies->all(), [], $server);
+        $replay->headers->set('Accept', 'application/json');
+        $replay->headers->set('X-Requested-With', 'XMLHttpRequest');
+        if ($current->hasSession()) {
+            $replay->headers->set('X-CSRF-TOKEN', $current->session()->token());
+        }
+
+        try {
+            $response = app(Kernel::class)->handle($replay);
+        } finally {
+            app()->instance('request', $current);
+        }
+
+        if ($response->getStatusCode() === 422) {
+            $errors = json_decode((string) $response->getContent(), true)['errors'] ?? ['form' => ['Données refusées.']];
+            throw ValidationException::withMessages($errors);
+        }
+
+        if ($response->getStatusCode() >= 400) {
+            throw ValidationException::withMessages(['form' => match ($response->getStatusCode()) {
+                403 => 'Action non autorisée pour ce compte.',
+                404 => 'L’élément n’existe plus.',
+                419 => 'Session expirée : reconnectez-vous puis synchronisez.',
+                default => 'Erreur '.$response->getStatusCode().' lors du rejeu.',
+            }]);
+        }
 
         return null;
     }
