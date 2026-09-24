@@ -177,7 +177,16 @@ class MemberController extends Controller
 
     public function destroy(Member $member): RedirectResponse
     {
-        $member->delete();
+        DB::transaction(function () use ($member) {
+            // Free the member's seats in today's and upcoming crew plans; past plans keep their history.
+            CrewAssignment::query()
+                ->where('member_id', $member->id)
+                ->whereHas('crewPlan.outing', fn ($query) => $query->whereDate('date', '>=', today()))
+                ->get()
+                ->each->delete();
+
+            $member->delete();
+        });
 
         return redirect()->route('members.index')->with('status', 'Membre supprimé');
     }

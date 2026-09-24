@@ -15,6 +15,7 @@ use App\Models\CrewRole;
 use App\Models\Member;
 use App\Models\Outing;
 use App\Models\User;
+use App\Services\BoatLayoutGenerator;
 use Database\Seeders\CrewRoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
@@ -343,5 +344,36 @@ class MemberTest extends TestCase
             'is_active' => '1',
             ...$overrides,
         ];
+    }
+
+    public function test_deleting_a_member_frees_upcoming_seats_and_keeps_past_ones(): void
+    {
+        $this->seed(CrewRoleSeeder::class);
+        $user = $this->signInAdmin();
+        $member = Member::factory()->for($user->association)->create(['first_name' => 'Parti']);
+        $boat = Boat::factory()->for($user->association)->create();
+        $configuration = $boat->configurations()->create(['name' => '1 voile', 'sail_count' => 1, 'bwa_count' => 9, 'is_default' => true]);
+        app(BoatLayoutGenerator::class)->generate($configuration);
+        $patron = $configuration->positions()->where('code', 'patron')->value('id');
+
+        $plans = collect([today()->subWeek(), today()])->map(function ($date) use ($user, $boat, $configuration, $patron, $member) {
+            $outing = Outing::factory()->for($user->association)->create(['date' => $date]);
+            $plan = $outing->crewPlans()->create(['boat_id' => $boat->id, 'boat_configuration_id' => $configuration->id]);
+            $plan->assignments()->create(['boat_position_id' => $patron, 'member_id' => $member->id]);
+
+            return $plan;
+        });
+
+        $this->delete(route('members.destroy', $member))->assertRedirect(route('members.index'));
+
+        [$past, $upcoming] = $plans;
+        $this->assertSame(1, $past->assignments()->count());
+        $this->assertSame(0, $upcoming->assignments()->count());
+
+        // Past plan and its outing still render, showing the deleted member.
+        $this->get(route('crew-plans.show', [$past->outing_id, $past]))->assertOk()->assertSee('Parti');
+        $this->get(route('outings.show', $past->outing_id))->assertOk();
+        // The editor leaves the seat free rather than keeping a member who can no longer be saved.
+        $this->get(route('crew-plans.edit', [$past->outing_id, $past]))->assertOk()->assertDontSee('&quot;patron&quot;:{&quot;member_id&quot;', false);
     }
 }

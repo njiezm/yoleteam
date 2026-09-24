@@ -67,9 +67,11 @@ class CrewPlanPresenter
      */
     public function assignments(CrewPlan $plan): array
     {
-        $plan->loadMissing('assignments.position');
+        $plan->loadMissing('assignments.position', 'assignments.member');
 
+        // A deleted member can no longer be seated: leave the seat free in the editor and the drawing.
         return $plan->assignments
+            ->reject(fn (CrewAssignment $assignment) => $assignment->member === null || $assignment->member->trashed())
             ->mapWithKeys(fn (CrewAssignment $assignment) => [$assignment->position->code => [
                 'member_id' => $assignment->member_id,
                 'placement' => $assignment->bwa_placement?->value,

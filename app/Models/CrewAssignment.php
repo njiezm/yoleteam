@@ -33,9 +33,13 @@ class CrewAssignment extends Model
         return $this->belongsTo(BoatPosition::class, 'boat_position_id');
     }
 
-    /** @return BelongsTo<Member, $this> */
+    /**
+     * Includes deleted members so that past plans keep showing who sailed.
+     *
+     * @return BelongsTo<Member, $this>
+     */
     public function member(): BelongsTo
     {
-        return $this->belongsTo(Member::class);
+        return $this->belongsTo(Member::class)->withTrashed();
     }
 }
