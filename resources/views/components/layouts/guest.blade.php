@@ -5,8 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#0B2545">
-    <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+    <link rel="manifest" href="/manifest.webmanifest?v=2">
+    <link rel="icon" href="/icons/icon.svg?v=2" type="image/svg+xml">
     <title>{{ $title }} — YoleTeam</title>
     @fonts
     @vite(['resources/css/app.css', 'resources/js/app.js'])

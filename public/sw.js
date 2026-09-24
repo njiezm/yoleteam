@@ -3,9 +3,10 @@
 // Writes (PUT/POST) are never intercepted: offline changes go through the IndexedDB queue (resources/js/offline-queue.js).
 
 const PAGES = 'yt-pages-v1'; // same name as in resources/js/sync.js
-const ASSETS = 'yt-assets-v1';
+// Bump when static assets change (icons, offline page): the previous cache is deleted on activation.
+const ASSETS = 'yt-assets-v2';
 const OFFLINE_PAGE = '/offline.html';
-const STATIC = [OFFLINE_PAGE, '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
+const STATIC = [OFFLINE_PAGE, '/manifest.webmanifest?v=2', '/icons/icon.svg?v=2', '/icons/icon-192.png?v=2', '/icons/icon-512.png?v=2'];
 const NETWORK_TIMEOUT = 5000;
 
 // Screens kept for offline use (cached when visited online, and pre-cached from the dashboard).
