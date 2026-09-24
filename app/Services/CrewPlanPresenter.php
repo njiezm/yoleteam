@@ -1,0 +1,194 @@
+<?php
+
+namespace App\Services;
+
+use App\Enums\BoatSide;
+use App\Models\Boat;
+use App\Models\BoatConfiguration;
+use App\Models\BoatPosition;
+use App\Models\CrewAssignment;
+use App\Models\CrewPlan;
+use App\Models\CrewRole;
+use App\Models\Member;
+use Illuminate\Support\Collection;
+
+/**
+ * Shapes boats, configurations and crew plans into the arrays consumed by the
+ * client-side yole drawing (resources/js/yole.js) and the crew plan editor.
+ */
+class CrewPlanPresenter
+{
+    /** @var array<string, array{label: string, short: string, color: string, zone: string}>|null */
+    private ?array $roles = null;
+
+    /** @return array<string, array{label: string, short: string, color: string, zone: string}> */
+    public function roles(): array
+    {
+        return $this->roles ??= CrewRole::query()->orderBy('sort_order')->get()
+            ->mapWithKeys(fn (CrewRole $role) => [$role->code => [
+                'label' => $role->label,
+                'short' => $role->short(),
+                'color' => $role->color,
+                'zone' => $role->zone->label(),
+            ]])->all();
+    }
+
+    /**
+     * @return array{id: int, name: string, sail_count: int, bwa_count: int, is_default: bool, positions: list<array<string, mixed>>}
+     */
+    public function configuration(BoatConfiguration $configuration): array
+    {
+        $configuration->loadMissing('positions.crewRole');
+
+        return [
+            'id' => $configuration->id,
+            'name' => $configuration->name,
+            'sail_count' => $configuration->sail_count,
+            'bwa_count' => $configuration->bwa_count,
+            'is_default' => $configuration->is_default,
+            'positions' => $configuration->positions->map(fn (BoatPosition $position) => [
+                'id' => $position->id,
+                'code' => $position->code,
+                'label' => $position->label,
+                'role' => $position->crewRole->code,
+                'side' => $position->side->value,
+                'bwa' => $position->bwa_index,
+                'x' => $position->x,
+                'y' => $position->y,
+                'optional' => $position->is_optional,
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * Assignments of a plan keyed by position code.
+     *
+     * @return array<string, array{member_id: int, placement: string|null}>
+     */
+    public function assignments(CrewPlan $plan): array
+    {
+        $plan->loadMissing('assignments.position');
+
+        return $plan->assignments
+            ->mapWithKeys(fn (CrewAssignment $assignment) => [$assignment->position->code => [
+                'member_id' => $assignment->member_id,
+                'placement' => $assignment->bwa_placement?->value,
+            ]])->all();
+    }
+
+    /**
+     * @return array{initials: string, short: string, name: string, color: string}
+     */
+    public function member(Member $member): array
+    {
+        return [
+            'initials' => $member->initials,
+            'short' => $member->short_name,
+            'name' => $member->full_name,
+            'color' => $member->color(),
+        ];
+    }
+
+    /**
+     * Data for a read-only <x-yole> drawing.
+     *
+     * @param  array{labels?: bool, compact?: bool, wind?: bool}  $options
+     * @return array<string, mixed>
+     */
+    public function drawing(Boat $boat, BoatConfiguration $configuration, ?CrewPlan $plan = null, array $options = []): array
+    {
+        $members = [];
+
+        if ($plan) {
+            $plan->loadMissing('assignments.position', 'assignments.member.crewRoles');
+            foreach ($plan->assignments as $assignment) {
+                $members[$assignment->member_id] = $this->member($assignment->member);
+            }
+        }
+
+        return [
+            'config' => $this->configuration($configuration),
+            'roles' => $this->roles(),
+            'members' => (object) $members,
+            'assignments' => (object) ($plan ? $this->assignments($plan) : []),
+            'wind' => ($options['wind'] ?? true) && $plan?->wind_direction !== null
+                ? ['dir' => $plan->wind_direction, 'kts' => $plan->wind_strength]
+                : null,
+            'boatColor' => $boat->color(),
+            'labels' => $options['labels'] ?? true,
+            'compact' => $options['compact'] ?? false,
+        ];
+    }
+
+    /**
+     * Informative weight distribution of a plan (declared weights only).
+     *
+     * @return array{babord: float, tribord: float, avant: float, arriere: float, total: float, filled: int, positions: int, diff: float}
+     */
+    public function balance(CrewPlan $plan): array
+    {
+        $plan->loadMissing('assignments.position', 'assignments.member', 'configuration.positions');
+
+        $balance = ['babord' => 0.0, 'tribord' => 0.0, 'avant' => 0.0, 'arriere' => 0.0, 'total' => 0.0, 'filled' => 0];
+
+        foreach ($plan->assignments as $assignment) {
+            $weight = (float) $assignment->member->weight_kg;
+            $position = $assignment->position;
+
+            $balance['filled']++;
+            $balance['total'] += $weight;
+            $balance[$position->y < 50 ? 'avant' : 'arriere'] += $weight;
+
+            if ($position->side === BoatSide::Babord) {
+                $balance['babord'] += $weight;
+            } elseif ($position->side === BoatSide::Tribord) {
+                $balance['tribord'] += $weight;
+            }
+        }
+
+        return [
+            ...$balance,
+            'positions' => $plan->configuration->positions->count(),
+            'diff' => $balance['babord'] - $balance['tribord'],
+        ];
+    }
+
+    /**
+     * Assignments grouped for the printable plan.
+     *
+     * @return Collection<string, Collection<int, CrewAssignment>>
+     */
+    public function groupedAssignments(CrewPlan $plan): Collection
+    {
+        $plan->loadMissing('assignments.position.crewRole', 'assignments.member.crewRoles');
+
+        return $plan->assignments
+            ->sortBy(fn (CrewAssignment $assignment) => $assignment->position->sort_order)
+            ->groupBy(fn (CrewAssignment $assignment) => match (true) {
+                $assignment->position->side === BoatSide::Babord && $assignment->position->bwa_index !== null => 'Dresseurs bâbord',
+                $assignment->position->side === BoatSide::Tribord && $assignment->position->bwa_index !== null => 'Dresseurs tribord',
+                $assignment->position->y < 50 => 'Avant & gréement',
+                default => 'Arrière',
+            });
+    }
+
+    /** "E-NE" style label for a wind direction in degrees (direction the wind comes from). */
+    public static function windLabel(?int $degrees): ?string
+    {
+        if ($degrees === null) {
+            return null;
+        }
+
+        $points = ['N', 'N-NE', 'NE', 'E-NE', 'E', 'E-SE', 'SE', 'S-SE', 'S', 'S-SO', 'SO', 'O-SO', 'O', 'O-NO', 'NO', 'N-NO'];
+
+        return $points[(int) round((($degrees % 360) + 360) % 360 / 22.5) % 16];
+    }
+
+    /** @return array<int, string> Degrees => label, for wind selects. */
+    public static function windOptions(): array
+    {
+        return collect(range(0, 337.5, 22.5))
+            ->mapWithKeys(fn (float $degrees) => [(int) $degrees => self::windLabel((int) $degrees)])
+            ->all();
+    }
+}

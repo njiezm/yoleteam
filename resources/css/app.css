@@ -1,0 +1,80 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../../app/View/Components/*.php';
+@source '../../app/Enums/*.php';
+
+@theme {
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --color-navy-50: #EEF3F9;
+    --color-navy-100: #D8E3F0;
+    --color-navy-200: #B1C6E0;
+    --color-navy-300: #7E9CC4;
+    --color-navy-500: #2E5A8F;
+    --color-navy-600: #1D4570;
+    --color-navy-700: #13315C;
+    --color-navy-800: #0E2A4D;
+    --color-navy-900: #0B2545;
+    --color-navy-950: #071A31;
+    --color-sun-100: #FFF4CC;
+    --color-sun-300: #FFD95A;
+    --color-sun-400: #F5B700;
+    --color-sun-500: #DDA300;
+    --color-sea-50: #F4F7FB;
+}
+
+@utility btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 h-11 text-sm font-semibold transition active:scale-[.98] whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+@layer components {
+    .card { @apply bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(11,37,69,.04),0_4px_16px_-8px_rgba(11,37,69,.12)]; }
+    .btn-primary { @apply btn bg-navy-900 text-white hover:bg-navy-700; }
+    .btn-sun { @apply btn bg-sun-400 text-navy-950 hover:bg-sun-300; }
+    .btn-ghost { @apply btn bg-white text-navy-900 border border-slate-200 hover:bg-slate-50; }
+    .btn-danger { @apply btn bg-white text-red-600 border border-red-200 hover:bg-red-50; }
+    .btn-sm { @apply h-9 px-3 text-[13px] rounded-lg; }
+    .chip { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold; }
+    .input { @apply w-full h-11 rounded-xl border border-slate-300 bg-white px-3.5 text-sm text-navy-950 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sun-400/30 focus:border-sun-500; }
+    .input-error { @apply border-red-400 ring-4 ring-red-100; }
+    .label { @apply block text-[13px] font-semibold text-navy-900 mb-1.5; }
+    .muted { @apply text-slate-500; }
+    .seg { @apply inline-flex p-1 rounded-xl bg-slate-100 gap-1; }
+    .seg > * { @apply px-3 h-9 rounded-lg text-[13px] font-semibold text-slate-600 inline-flex items-center gap-1.5 cursor-pointer; }
+    .seg > .on, .seg > :has(input:checked) { @apply bg-white text-navy-950 shadow-sm; }
+    .nav-link { @apply flex items-center gap-3 px-3 h-11 rounded-xl text-[14px] font-semibold text-navy-100/80 hover:bg-white/5 hover:text-white; }
+    .nav-link.on { @apply bg-white/10 text-white; }
+    .th { @apply text-left text-[11px] uppercase tracking-wider font-bold text-slate-500 px-4 py-3; }
+    .td { @apply px-4 py-3 text-sm text-navy-950 border-t border-slate-100; }
+}
+
+html, body { background: #F4F7FB; }
+body { -webkit-font-smoothing: antialiased; }
+
+/* Plan de yole (SVG) */
+.yl-dir { font: 800 11px 'Plus Jakarta Sans', sans-serif; fill: #0B2545; letter-spacing: .12em; }
+.yl-side { font: 700 10px 'Plus Jakarta Sans', sans-serif; fill: #5B7BA3; letter-spacing: .2em; }
+.yl-bwa-label { font: 700 9px 'Plus Jakarta Sans', sans-serif; fill: #7C4A1E; letter-spacing: .08em; text-transform: uppercase; }
+.yl-wind { font: 700 10px 'Plus Jakarta Sans', sans-serif; fill: #0B2545; }
+.yl-wind-s { font: 600 10px 'Plus Jakarta Sans', sans-serif; fill: #64748B; }
+.yl-init { font: 800 14px 'Plus Jakarta Sans', sans-serif; fill: #fff; }
+.yl-name { font: 700 10.5px 'Plus Jakarta Sans', sans-serif; fill: #fff; }
+.yl-plus { font: 700 18px 'Plus Jakarta Sans', sans-serif; }
+.yl-short { font: 800 9px 'Plus Jakarta Sans', sans-serif; letter-spacing: .04em; }
+.yl-pos:focus { outline: none; }
+.yl-pos:focus-visible circle { stroke: #F5B700; stroke-width: 4; }
+.yl-pos.drop-over circle { stroke: #F5B700 !important; stroke-width: 5 !important; }
+
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.drag-ghost { opacity: .5; }
+.safe-b { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+
+select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; padding-right: 34px; }
+textarea.input { height: auto; padding-top: .75rem; padding-bottom: .75rem; }
+
+@media print {
+    body, html { background: #fff; }
+    .no-print { display: none !important; }
+    .card { box-shadow: none; }
+}

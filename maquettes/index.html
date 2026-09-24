@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YoleTeam — Maquettes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body class="font-sans text-navy-950">
+  <header class="bg-navy-900 text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-8 py-10">
+      <p class="chip bg-sun-400 text-navy-950">Maquettes · septembre 2026</p>
+      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight mt-4">YoleTeam — Association Yole Nou</h1>
+      <p class="text-navy-200 mt-2 max-w-2xl">Plan d’équipage de yole ronde (bwa dressés, 1 ou 2 voiles), présences du jour, sorties, membres, régates et mode hors ligne. Cliquez sur un écran pour ouvrir le prototype interactif.</p>
+      <div class="flex flex-wrap gap-2 mt-6">
+        <a href="app.html#/" class="btn-sun">Ouvrir le prototype</a>
+        <a href="export/YoleTeam-maquettes.pdf" class="btn bg-white/10 text-white hover:bg-white/15">Télécharger le PDF</a>
+        <a href="export/png/" class="btn bg-white/10 text-white hover:bg-white/15">Dossier des PNG</a>
+      </div>
+    </div>
+  </header>
+  <main id="board" class="max-w-7xl mx-auto px-4 sm:px-8 py-10 space-y-12"></main>
+  <script>
+    // Même liste que tools/screens.cjs
+    const screens = [
+      ['01','connexion','Connexion','#/login','Accès'],
+      ['02','tableau-de-bord','Tableau de bord','#/','Accueil'],
+      ['03','presences-du-jour','Présences du jour (appel)','#/appel','Jour de sortie'],
+      ['04','presences-hors-ligne','Appel en mode hors ligne','?offline=1#/appel','Jour de sortie'],
+      ['05','plan-equipage','Plan d’équipage — éditeur','#/equipage','Plan d’équipage'],
+      ['06','plan-equipage-poste','Plan d’équipage — poste sélectionné','?sel=dt3&sheet=1#/equipage','Plan d’équipage'],
+      ['07','plan-equipage-validation','Plan d’équipage — confirmation','#/equipage?modal=validate','Plan d’équipage'],
+      ['08','plan-equipage-valide','Plan validé (lecture / impression)','#/equipage/valide','Plan d’équipage'],
+      ['09','sorties','Sorties & calendrier','#/sorties','Sorties'],
+      ['10','nouvelle-sortie','Nouvelle sortie','#/sorties/nouvelle','Sorties'],
+      ['11','detail-sortie','Détail d’une sortie','#/sorties/101','Sorties'],
+      ['12','membres','Membres','#/membres','Membres'],
+      ['13','fiche-membre','Fiche membre','#/membres/3','Membres'],
+      ['14','formulaire-membre','Ajouter / modifier un membre','#/membres/nouveau','Membres'],
+      ['15','yoles','Yoles','#/yoles','Yoles'],
+      ['16','configuration-yole','Configuration d’une yole','#/yoles/1','Yoles'],
+      ['17','historique','Historique & statistiques','#/historique','Suivi'],
+      ['18','regates','Régates & courses','#/regates','Régates'],
+      ['19','detail-regate','Détail d’une régate (Tour des Yoles)','#/regates/1','Régates'],
+      ['20','synchronisation','Synchronisation & conflits','?offline=1#/synchro','Hors ligne'],
+      ['21','parametres','Paramètres','#/parametres','Administration'],
+      ['22','menu-plus','Menu « Plus » (mobile)','#/plus','Administration', true],
+      ['23','etats-interface','États de l’interface','#/etats','Référence UX'],
+    ];
+    const groups = [...new Set(screens.map(s => s[4]))];
+    document.getElementById('board').innerHTML = groups.map(g => `
+      <section>
+        <h2 class="text-xs font-bold uppercase tracking-[.15em] text-slate-500 mb-4">${g}</h2>
+        <div class="grid gap-6 lg:grid-cols-2">${screens.filter(s => s[4] === g).map(([n, slug, title, url, , mobileOnly]) => `
+          <article class="card p-4">
+            <div class="flex items-center gap-3 mb-4"><span class="chip bg-sun-400 text-navy-950">${n}</span><h3 class="font-bold flex-1">${title}</h3><a class="text-sm font-semibold text-navy-700" href="app.html${url}">Ouvrir →</a></div>
+            <div class="flex gap-4 items-start">
+              ${mobileOnly ? '' : `<a href="app.html${url}" class="flex-1 min-w-0 block rounded-xl overflow-hidden border border-slate-200 bg-white h-64"><img loading="lazy" src="export/png/desktop/${n}-${slug}.png" alt="${title} — desktop" class="w-full object-cover object-top"></a>`}
+              <a href="app.html${url}" class="w-28 shrink-0 block rounded-xl overflow-hidden border border-slate-200 bg-white h-64"><img loading="lazy" src="export/png/mobile/${n}-${slug}.png" alt="${title} — mobile" class="w-full object-cover object-top"></a>
+            </div>
+          </article>`).join('')}</div>
+      </section>`).join('');
+  </script>
+</body>
+</html>

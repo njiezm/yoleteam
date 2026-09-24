@@ -1,0 +1,18 @@
+{
+    "name": "YoleTeam",
+    "short_name": "YoleTeam",
+    "description": "Appel, plan d’équipage et régates de l’association — même sans réseau.",
+    "lang": "fr",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#F4F7FB",
+    "theme_color": "#0B2545",
+    "icons": [
+        { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+        { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+        { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+    ]
+}

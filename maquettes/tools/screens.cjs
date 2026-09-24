@@ -1,0 +1,27 @@
+// Liste des écrans du prototype (partagée par l'export PNG/PDF et le tableau de maquettes).
+// url : chemin relatif à app.html (query avant le hash = états de démo : offline, sel, sheet).
+module.exports = [
+  { n: '01', slug: 'connexion', title: 'Connexion', url: '#/login', group: 'Accès' },
+  { n: '02', slug: 'tableau-de-bord', title: 'Tableau de bord', url: '#/', group: 'Accueil' },
+  { n: '03', slug: 'presences-du-jour', title: 'Présences du jour (appel)', url: '#/appel', group: 'Jour de sortie' },
+  { n: '04', slug: 'presences-hors-ligne', title: 'Appel en mode hors ligne', url: '?offline=1#/appel', group: 'Jour de sortie' },
+  { n: '05', slug: 'plan-equipage', title: 'Plan d’équipage — éditeur', url: '#/equipage', group: 'Plan d’équipage' },
+  { n: '06', slug: 'plan-equipage-poste', title: 'Plan d’équipage — poste sélectionné', url: '?sel=dt3&sheet=1#/equipage', group: 'Plan d’équipage' },
+  { n: '07', slug: 'plan-equipage-validation', title: 'Plan d’équipage — confirmation', url: '#/equipage?modal=validate', group: 'Plan d’équipage' },
+  { n: '08', slug: 'plan-equipage-valide', title: 'Plan validé (lecture / impression)', url: '#/equipage/valide', group: 'Plan d’équipage' },
+  { n: '09', slug: 'sorties', title: 'Sorties & calendrier', url: '#/sorties', group: 'Sorties' },
+  { n: '10', slug: 'nouvelle-sortie', title: 'Nouvelle sortie', url: '#/sorties/nouvelle', group: 'Sorties' },
+  { n: '11', slug: 'detail-sortie', title: 'Détail d’une sortie', url: '#/sorties/101', group: 'Sorties' },
+  { n: '12', slug: 'membres', title: 'Membres', url: '#/membres', group: 'Membres' },
+  { n: '13', slug: 'fiche-membre', title: 'Fiche membre', url: '#/membres/3', group: 'Membres' },
+  { n: '14', slug: 'formulaire-membre', title: 'Ajouter / modifier un membre', url: '#/membres/nouveau', group: 'Membres' },
+  { n: '15', slug: 'yoles', title: 'Yoles', url: '#/yoles', group: 'Yoles' },
+  { n: '16', slug: 'configuration-yole', title: 'Configuration d’une yole', url: '#/yoles/1', group: 'Yoles' },
+  { n: '17', slug: 'historique', title: 'Historique & statistiques', url: '#/historique', group: 'Suivi' },
+  { n: '18', slug: 'regates', title: 'Régates & courses', url: '#/regates', group: 'Régates' },
+  { n: '19', slug: 'detail-regate', title: 'Détail d’une régate (Tour des Yoles)', url: '#/regates/1', group: 'Régates' },
+  { n: '20', slug: 'synchronisation', title: 'Synchronisation & conflits', url: '?offline=1#/synchro', group: 'Hors ligne' },
+  { n: '21', slug: 'parametres', title: 'Paramètres', url: '#/parametres', group: 'Administration' },
+  { n: '22', slug: 'menu-plus', title: 'Menu « Plus » (mobile)', url: '#/plus', group: 'Administration', mobileOnly: true },
+  { n: '23', slug: 'etats-interface', title: 'États de l’interface', url: '#/etats', group: 'Référence UX' },
+];
