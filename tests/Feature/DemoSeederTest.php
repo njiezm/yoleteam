@@ -21,7 +21,7 @@ class DemoSeederTest extends TestCase
         $association = Association::sole();
         $this->assertSame('Le Vauclin', $association->city);
         $this->assertStringContainsString('Baie des Mulets', $association->name);
-        $this->assertTrue($association->boats()->where('name', 'Prixe – Westpoint')->exists());
+        $this->assertTrue($association->boats()->where('name', 'Prixe – Midea')->exists());
         $this->assertTrue(CrewPlan::sole()->isValidated());
         $this->assertSame(8, Race::sole()->stages()->count());
 

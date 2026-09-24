@@ -77,7 +77,7 @@ class DemoSeeder extends Seeder
     private function seedBoats(Association $association): Collection
     {
         $boats = collect([
-            ['name' => 'Prixe – Westpoint', 'sponsor' => 'Prixe · Westpoint', 'hull_color' => 'rouge', 'length_m' => 9.50, 'notes' => 'Yole de course de l’association (Tour des Yoles, championnat FYRM).'],
+            ['name' => 'Prixe – Midea', 'sponsor' => 'Prixe · Midea', 'hull_color' => 'rouge', 'length_m' => 9.50, 'notes' => 'Yole de course de l’association (Tour des Yoles, championnat FYRM).'],
             ['name' => 'Yole école', 'sponsor' => null, 'hull_color' => 'bleu', 'length_m' => 9.20, 'notes' => 'Yole d’entraînement et d’initiation (données de démonstration).'],
         ])->map(fn (array $data) => $association->boats()->create($data));
 
