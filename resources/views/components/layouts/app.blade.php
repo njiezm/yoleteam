@@ -16,7 +16,7 @@
         ['outings.index', 'calendar', 'Sorties', ['outings.*']],
         ['attendance.today', 'check-square', 'Appel', ['attendance.*']],
         ['crew-plans.today', 'boat', 'Équipage', ['crew-plans.*']],
-        ['more', 'more', 'Plus', ['more', 'members.*', 'boats.*', 'races.*', 'history.*', 'settings.*', 'sync.*']],
+        ['more', 'more', 'Plus', ['more', 'members.*', 'boats.*', 'races.*', 'history.*', 'settings.*', 'sync.*', 'profile.*']],
     ];
     $initials = collect(explode(' ', $user->name))->map(fn ($part) => mb_substr($part, 0, 1))->take(2)->join('');
 @endphp
@@ -52,8 +52,10 @@
                 @endcan
             </nav>
             <div class="rounded-2xl bg-white/5 p-3 flex items-center gap-3">
-                <span class="w-10 h-10 rounded-full bg-sun-400 text-navy-950 grid place-items-center font-bold">{{ $initials }}</span>
-                <div class="text-sm leading-tight flex-1 min-w-0"><p class="font-semibold truncate">{{ $user->name }}</p><p class="text-navy-200 text-xs">{{ $user->role->label() }}</p></div>
+                <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 flex-1 min-w-0 hover:opacity-90" title="Mon profil">
+                    <span class="w-10 h-10 shrink-0 rounded-full bg-sun-400 text-navy-950 grid place-items-center font-bold">{{ $initials }}</span>
+                    <div class="text-sm leading-tight flex-1 min-w-0"><p class="font-semibold truncate">{{ $user->name }}</p><p class="text-navy-200 text-xs">{{ $user->role->label() }}</p></div>
+                </a>
                 <form method="POST" action="{{ route('logout') }}" data-logout>
                     @csrf
                     <button class="text-navy-200 hover:text-white cursor-pointer" title="Déconnexion"><x-icon name="logout" class="w-[18px] h-[18px]" /></button>

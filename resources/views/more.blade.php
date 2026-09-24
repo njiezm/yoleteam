@@ -11,13 +11,14 @@
 @endphp
 <x-layouts.app title="Plus">
     <div class="max-w-xl">
-        <div class="card p-4 flex items-center gap-3">
+        <a href="{{ route('profile.edit') }}" class="card p-4 flex items-center gap-3">
             <span class="w-12 h-12 rounded-full bg-sun-400 text-navy-950 grid place-items-center font-bold">{{ $initials }}</span>
             <div class="flex-1 min-w-0">
                 <p class="font-bold truncate">{{ $user->name }}</p>
                 <p class="text-xs muted">{{ $user->role->label() }} · {{ $user->association->name }}</p>
             </div>
-        </div>
+            <x-icon name="right" class="w-4 h-4 text-slate-400" />
+        </a>
 
         <div class="card mt-4 divide-y divide-slate-100">
             @foreach ($links as [$route, $icon, $label])

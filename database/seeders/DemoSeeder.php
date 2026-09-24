@@ -10,7 +10,6 @@ use App\Enums\MemberCategory;
 use App\Enums\MemberLevel;
 use App\Enums\OutingStatus;
 use App\Enums\OutingType;
-use App\Enums\RaceResultStatus;
 use App\Enums\RaceType;
 use App\Enums\UserRole;
 use App\Models\Association;
@@ -37,16 +36,16 @@ class DemoSeeder extends Seeder
         mt_srand(2026); // reproducible demo data
 
         $association = Association::create([
-            'name' => 'Association Yole Nou',
-            'slug' => 'yole-nou',
-            'city' => 'Le François',
+            'name' => 'Association des Yoles Rondes de la Baie des Mulets',
+            'slug' => 'baie-des-mulets',
+            'city' => 'Le Vauclin',
             'primary_color' => '#0B2545',
             'settings' => ['timezone' => 'America/Martinique', 'locale' => 'fr'],
         ]);
 
         $admin = User::create([
             'association_id' => $association->id,
-            'name' => 'Admin Yole Nou',
+            'name' => 'Bureau Baie des Mulets',
             'email' => 'admin@yoleteam.test',
             'password' => 'password',
             'role' => UserRole::Admin,
@@ -71,16 +70,15 @@ class DemoSeeder extends Seeder
         $plan = $this->seedCrewPlan($planOuting, $boats->first(), $members, $patron);
 
         $this->seedAttendances($outings['past'], $members, $patron, $plan);
-        $this->seedRace($association, $boats);
+        $this->seedRace($association);
     }
 
     /** @return Collection<int, Boat> */
     private function seedBoats(Association $association): Collection
     {
         $boats = collect([
-            ['name' => 'Ti-Bwa', 'sponsor' => 'Rhum Clément', 'hull_color' => 'rouge', 'length_m' => 9.50],
-            ['name' => 'La Cagou', 'sponsor' => 'Banane de Martinique', 'hull_color' => 'jaune', 'length_m' => 9.20],
-            ['name' => 'Zetwal', 'sponsor' => 'Ville du François', 'hull_color' => 'bleu', 'length_m' => 9.80],
+            ['name' => 'Prixe – Westpoint', 'sponsor' => 'Prixe · Westpoint', 'hull_color' => 'rouge', 'length_m' => 9.50, 'notes' => 'Yole de course de l’association (Tour des Yoles, championnat FYRM).'],
+            ['name' => 'Yole école', 'sponsor' => null, 'hull_color' => 'bleu', 'length_m' => 9.20, 'notes' => 'Yole d’entraînement et d’initiation (données de démonstration).'],
         ])->map(fn (array $data) => $association->boats()->create($data));
 
         foreach ($boats as $boat) {
@@ -174,12 +172,12 @@ class DemoSeeder extends Seeder
     private function seedOutings(Association $association, User $creator): array
     {
         $specs = [
-            [-12, OutingType::Entrainement, 'Entraînement du samedi', '06:00', '09:00', 'Baie du François'],
-            [-9, OutingType::Entrainement, 'Entraînement virements', '17:00', '19:00', 'Baie du François'],
-            [-5, OutingType::SortieLibre, 'Sortie vers les fonds blancs', '07:00', '12:00', 'Îlet Oscar'],
-            [-2, OutingType::Entrainement, 'Entraînement vitesse au largue', '06:00', '09:00', 'Baie du François'],
-            [3, OutingType::Entrainement, 'Entraînement du samedi', '06:00', '09:00', 'Baie du François'],
-            [10, OutingType::Regate, 'Régate du Robert', '08:00', '13:00', 'Le Robert'],
+            [-12, OutingType::Entrainement, 'Entraînement du samedi', '06:00', '09:00', 'Baie des Mulets'],
+            [-9, OutingType::Entrainement, 'Entraînement virements', '17:00', '19:00', 'Baie des Mulets'],
+            [-5, OutingType::SortieLibre, 'Sortie jusqu’à la Pointe Faula', '07:00', '12:00', 'Pointe Faula'],
+            [-2, OutingType::Entrainement, 'Entraînement vitesse au largue', '06:00', '09:00', 'Baie des Mulets'],
+            [3, OutingType::Entrainement, 'Entraînement du samedi', '06:00', '09:00', 'Baie des Mulets'],
+            [10, OutingType::Regate, 'Régate du Vauclin', '08:00', '13:00', 'Baie du Vauclin'],
         ];
 
         $outings = collect($specs)->map(function (array $s) use ($association, $creator) {
@@ -292,7 +290,11 @@ class DemoSeeder extends Seeder
         };
     }
 
-    private function seedRace(Association $association, Collection $boats): void
+    /**
+     * Tour des Yoles Rondes 2026 (40e édition, 26 juillet – 2 août) : parcours officiel annoncé par la fédération.
+     * Les résultats ne sont pas inventés : ils sont à saisir dans l’application.
+     */
+    private function seedRace(Association $association): void
     {
         $race = Race::create([
             'association_id' => $association->id,
@@ -301,51 +303,29 @@ class DemoSeeder extends Seeder
             'season' => 2026,
             'start_date' => '2026-07-26',
             'end_date' => '2026-08-02',
-            'location' => 'Tour de la Martinique',
-            'notes' => 'Participation des trois yoles de l\'association.',
+            'location' => 'Tour de la Martinique (départ et arrivée à Sainte-Anne)',
+            'notes' => '40e édition. Étapes baptisées du nom des patrons du premier Tour (1985).',
         ]);
 
-        $stages = collect([
-            [1, 'Étape 1 — Fort-de-France / Schœlcher', '2026-07-26', 'Fort-de-France', 'Schœlcher', 8.5],
-            [2, 'Étape 2 — Case-Pilote / Les Anses-d\'Arlet', '2026-07-27', 'Case-Pilote', 'Les Anses-d\'Arlet', 14.0],
-            [3, 'Étape 3 — Les Anses-d\'Arlet / Sainte-Luce', '2026-07-28', 'Les Anses-d\'Arlet', 'Sainte-Luce', 13.0],
-            [4, 'Étape 4 — Sainte-Luce / Le Marin', '2026-07-29', 'Sainte-Luce', 'Le Marin', 11.0],
-            [5, 'Étape 5 — Sainte-Anne / Le Vauclin', '2026-07-30', 'Sainte-Anne', 'Le Vauclin', 16.5],
-            [6, 'Étape 6 — Le Vauclin / Le François', '2026-08-01', 'Le Vauclin', 'Le François', 12.0],
-            [7, 'Étape 7 — Le François / Le Robert (arrivée)', '2026-08-02', 'Le François', 'Le Robert', 10.0],
-        ])->map(fn (array $s) => $race->stages()->create([
-            'number' => $s[0],
-            'name' => $s[1],
-            'date' => $s[2],
-            'start_location' => $s[3],
-            'end_location' => $s[4],
-            'distance_nm' => $s[5],
-        ]));
-
-        // Résultats des 4 premières étapes (système à points bas : points = rang).
-        $results = [
-            1 => [[4, 3840], [11, 4102], [7, 3975]],
-            2 => [[3, 6120], [9, 6488], [5, 6230]],
-            3 => [[6, 5710], [null, null, RaceResultStatus::Abandon, 'Démâtage au large du Diamant'], [2, 5544]],
-            4 => [[5, 4620], [12, 4980], [8, 4755]],
+        $stages = [
+            [1, 'Étape Gabriel Mélidor', '2026-07-26', 'Sainte-Anne', 'Le Vauclin'],
+            [2, 'Étape Frantz Férule', '2026-07-27', 'Le Vauclin', 'Le Robert'],
+            [3, 'Étape Eugène Math', '2026-07-28', 'Le Robert', 'La Trinité'],
+            [4, 'Étape François Lagin', '2026-07-29', 'La Trinité', 'Saint-Pierre'],
+            [5, 'Étape Charles Exilie', '2026-07-30', 'Saint-Pierre', 'Fort-de-France'],
+            [6, 'Étape Romain Lassource', '2026-07-31', 'Fort-de-France', 'Les Anses-d’Arlet'],
+            [7, 'Étape Raoul Pancrate', '2026-08-01', 'Les Anses-d’Arlet', 'Rivière-Pilote'],
+            [8, 'Étape Désiré Lamon', '2026-08-02', 'Rivière-Pilote', 'Sainte-Anne'],
         ];
 
-        foreach ($results as $stageNumber => $rows) {
-            $stage = $stages->firstWhere('number', $stageNumber);
-
-            foreach ($boats->values() as $i => $boat) {
-                [$rank, $seconds] = $rows[$i];
-                $status = $rows[$i][2] ?? RaceResultStatus::Classe;
-
-                $stage->results()->create([
-                    'boat_id' => $boat->id,
-                    'rank' => $rank,
-                    'elapsed_seconds' => $seconds,
-                    'points' => $status === RaceResultStatus::Classe ? $rank : 20,
-                    'status' => $status,
-                    'notes' => $rows[$i][3] ?? null,
-                ]);
-            }
+        foreach ($stages as [$number, $name, $date, $from, $to]) {
+            $race->stages()->create([
+                'number' => $number,
+                'name' => $name,
+                'date' => $date,
+                'start_location' => $from,
+                'end_location' => $to,
+            ]);
         }
     }
 }

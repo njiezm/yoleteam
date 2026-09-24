@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\BoatConfigurationController;
 use App\Http\Controllers\BoatController;
 use App\Http\Controllers\CrewPlanController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\OutingController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RaceResultController;
 use App\Http\Controllers\RaceStageController;
@@ -21,6 +23,11 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('/connexion', [LoginController::class, 'create'])->name('login');
     Route::post('/connexion', [LoginController::class, 'store'])->middleware('throttle:login');
+
+    Route::get('/mot-de-passe-oublie', [PasswordResetController::class, 'create'])->name('password.request');
+    Route::post('/mot-de-passe-oublie', [PasswordResetController::class, 'store'])->middleware('throttle:login')->name('password.email');
+    Route::get('/reinitialisation/{token}', [PasswordResetController::class, 'edit'])->name('password.reset');
+    Route::post('/reinitialisation', [PasswordResetController::class, 'update'])->name('password.update');
 });
 
 Route::middleware('auth')->group(function () {
@@ -28,6 +35,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::view('/plus', 'more')->name('more');
+
+    Route::get('/profil', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profil', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profil/mot-de-passe', [ProfileController::class, 'updatePassword'])->name('profile.password');
 
     // Sorties, appel et plans d'équipage (admin + patrons).
     Route::resource('sorties', OutingController::class)
