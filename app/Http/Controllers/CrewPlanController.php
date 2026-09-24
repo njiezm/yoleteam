@@ -10,6 +10,7 @@ use App\Models\CrewAssignment;
 use App\Models\CrewPlan;
 use App\Models\Member;
 use App\Models\Outing;
+use App\Services\BoatLayoutGenerator;
 use App\Services\CrewPlanPresenter;
 use App\Services\CrewPlanSync;
 use Illuminate\Http\JsonResponse;
@@ -128,6 +129,9 @@ class CrewPlanController extends Controller
                     'configuration_id' => $crewPlan->boat_configuration_id,
                     'wind_direction' => $crewPlan->wind_direction ?? $outing->wind_direction,
                     'wind_strength' => $crewPlan->wind_strength ?? $outing->wind_strength,
+                    'bwa_side' => $crewPlan->bwa_side?->value ?? 'babord',
+                    'fond_count' => $crewPlan->fond_count,
+                    'max_fonds' => BoatLayoutGenerator::MAX_FONDS,
                     'update_url' => route('crew-plans.update', [$outing, $crewPlan]),
                 ],
                 'boatColor' => $crewPlan->boat->color(),

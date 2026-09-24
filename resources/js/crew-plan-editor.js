@@ -1,6 +1,6 @@
 // Crew plan editor: seat members on the yole (drag & drop on desktop, tap a seat then a member on mobile),
 // switch configuration (1 / 2 voiles), set wind and bwa placement. The full plan state is autosaved.
-import { balance, escapeHtml as e, yoleSVG } from './yole';
+import { balance, escapeHtml as e, fondIndex, visiblePositions, yoleSVG } from './yole';
 import { send, toast } from './http';
 import { enqueue, forget, pending } from './offline-queue';
 
@@ -29,6 +29,8 @@ export function mountCrewPlanEditor(root) {
         roleFilter: 'tous',
         search: '',
         wind: { dir: data.plan.wind_direction, kts: data.plan.wind_strength },
+        bwaSide: data.plan.bwa_side || 'babord',
+        fondCount: data.plan.fond_count ?? 1,
         status: data.plan.status,
         version: data.plan.version,
         dirty: false,
@@ -40,7 +42,7 @@ export function mountCrewPlanEditor(root) {
     const $ = (sel) => root.querySelector(sel);
     const $$ = (sel, scope = document) => [...scope.querySelectorAll(sel)];
     const config = () => configurations.find((c) => c.id === S.configId) || configurations[0];
-    const positions = () => config().positions;
+    const positions = () => visiblePositions(config().positions, S.fondCount);
     const positionByCode = (code) => positions().find((p) => p.code === code);
     const codeOf = (memberId) => Object.keys(S.assignments).find((code) => S.assignments[code].member_id === memberId);
     const assignedIds = () => new Set(Object.values(S.assignments).map((a) => a.member_id));
@@ -54,6 +56,8 @@ export function mountCrewPlanEditor(root) {
         boat_configuration_id: S.configId,
         wind_direction: S.wind.dir === '' || S.wind.dir === null ? null : +S.wind.dir,
         wind_strength: S.wind.kts === '' || S.wind.kts === null ? null : +S.wind.kts,
+        bwa_side: S.bwaSide,
+        fond_count: S.fondCount,
         assignments: Object.entries(S.assignments)
             .map(([code, a]) => ({ position: positionByCode(code), a }))
             .filter(({ position }) => position)
@@ -128,6 +132,13 @@ export function mountCrewPlanEditor(root) {
         changed();
     }
 
+    function setFondCount(count) {
+        S.fondCount = Math.max(0, Math.min(data.plan.max_fonds ?? 4, count));
+        Object.keys(S.assignments).forEach((code) => { const f = fondIndex(code); if (f !== null && f > S.fondCount) delete S.assignments[code]; });
+        if (S.selected && !positionByCode(S.selected)) S.selected = null;
+        changed();
+    }
+
     function switchConfiguration(id) {
         S.configId = id;
         const codes = new Set(positions().map((p) => p.code));
@@ -151,28 +162,25 @@ export function mountCrewPlanEditor(root) {
         const pct = b.positions ? Math.round((b.filled / b.positions) * 100) : 0;
         $$('[data-progress-text]').forEach((el) => { el.textContent = `${b.filled}/${b.positions} postes`; });
         $$('[data-progress-bar]').forEach((el) => { el.style.width = `${pct}%`; });
-        const warn = Math.abs(b.diff) > 12;
         $$('[data-balance-chip]').forEach((el) => {
-            el.className = `chip ${warn ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`;
-            el.innerHTML = `${icon('scale', 'w-3.5 h-3.5')}${warn ? kg(Math.abs(b.diff)) : 'OK'}`;
+            el.className = 'chip bg-slate-100 text-slate-700 whitespace-nowrap';
+            el.innerHTML = `${icon('scale', 'w-3.5 h-3.5')}${kg(b.total)}`;
         });
     }
 
     function balanceCard(b) {
-        const warn = Math.abs(b.diff) > 12;
-        const shift = Math.max(-45, Math.min(45, b.diff * 1.5));
+        const side = S.bwaSide === 'tribord' ? 'tribord' : 'bâbord';
+        const share = b.total ? Math.round((b.bwa / b.total) * 100) : 0;
         return `<div class="card p-4">
             <div class="flex items-center justify-between"><p class="font-bold flex items-center gap-2">${icon('scale')}Équilibre</p>
-              <span class="chip whitespace-nowrap ${warn ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">${warn ? 'À surveiller' : 'Équilibré'}</span></div>
-            <div class="mt-3 flex justify-between text-xs font-bold"><span>Bâbord · ${kg(b.babord)}</span><span>${kg(b.tribord)} · Tribord</span></div>
-            <div class="mt-2 relative h-3 rounded-full bg-slate-100"><div class="absolute top-0 bottom-0 left-1/2 w-px bg-slate-400"></div>
-              <div class="absolute -top-1 w-5 h-5 rounded-full border-4 border-white shadow ${warn ? 'bg-amber-500' : 'bg-emerald-500'}" style="left:calc(${50 - shift}% - 10px)"></div></div>
+              <span class="chip bg-slate-100 text-slate-700 whitespace-nowrap">Bwa au vent · ${side}</span></div>
+            <div class="mt-3 flex justify-between text-xs font-bold"><span>${b.bwaCount} bwa dressé(s) · ${kg(b.bwa)}</span><span>${share} % du poids</span></div>
+            <div class="mt-2 h-3 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full bg-emerald-500" style="width:${share}%"></div></div>
             <div class="mt-3 grid grid-cols-3 gap-1.5 text-center text-sm">
               <div class="rounded-lg bg-slate-50 p-2"><p class="text-[10px] muted font-bold uppercase">Avant</p><p class="font-extrabold whitespace-nowrap">${kg(b.avant)}</p></div>
               <div class="rounded-lg bg-slate-50 p-2"><p class="text-[10px] muted font-bold uppercase">Arrière</p><p class="font-extrabold whitespace-nowrap">${kg(b.arriere)}</p></div>
               <div class="rounded-lg bg-slate-50 p-2"><p class="text-[10px] muted font-bold uppercase">Total</p><p class="font-extrabold whitespace-nowrap">${kg(b.total)}</p></div>
             </div>
-            ${warn ? `<p class="mt-3 text-[12px] text-amber-800 bg-amber-50 rounded-lg p-2 flex gap-1.5">${icon('alert')}Écart de ${kg(Math.abs(b.diff))} côté ${b.diff > 0 ? 'bâbord' : 'tribord'}.</p>` : ''}
             <p class="mt-2 text-[11px] muted">Indication basée sur les poids déclarés — ne remplace pas l’œil du patron.</p>
           </div>`;
     }
@@ -221,7 +229,7 @@ export function mountCrewPlanEditor(root) {
         const m = a && memberById.get(a.member_id);
         el.innerHTML = `<div class="card p-4 ring-2 ring-sun-400/50">
             <div class="flex items-start justify-between"><div><p class="text-[11px] font-bold uppercase tracking-wider muted">Poste sélectionné</p><p class="font-extrabold text-lg">${e(p.label)}</p>
-              <p class="text-xs muted">${e(role?.zone)}${p.bwa ? ` · Bwa n°${p.bwa} · ${p.side === 'babord' ? 'Bâbord' : 'Tribord'}` : ''}${p.optional ? ' · optionnel' : ''}</p></div>
+              <p class="text-xs muted">${e(role?.zone)}${p.bwa ? ` · Bwa n°${p.bwa} · au vent ${S.bwaSide === 'tribord' ? 'tribord' : 'bâbord'}` : ''}</p></div>
               <button type="button" data-action="unselect" class="w-8 h-8 grid place-items-center rounded-lg hover:bg-slate-100" aria-label="Fermer">${icon('x')}</button></div>
             ${m ? `<div class="mt-3 flex items-center gap-3 p-3 rounded-xl bg-slate-50"><span class="w-11 h-11 rounded-full grid place-items-center font-bold text-white" style="background:${e(m.color)}">${e(m.initials)}</span>
                 <div class="flex-1 min-w-0"><p class="font-bold truncate">${e(m.name)}</p><p class="text-xs muted">${[m.kg ? kg(m.kg) : null, m.cm ? `${m.cm} cm` : null, m.level].filter(Boolean).map(e).join(' · ')}</p></div></div>
@@ -275,9 +283,12 @@ export function mountCrewPlanEditor(root) {
     function render() {
         const b = stats();
         $('[data-configs]').innerHTML = configurations.map((c) => `<button type="button" data-config="${c.id}" class="${c.id === S.configId ? 'on' : ''}">${e(c.name)}</button>`).join('');
+        $('[data-crew-options]').innerHTML = `<div class="seg" role="group" aria-label="Bwa au vent">${[['babord', 'bâbord'], ['tribord', 'tribord']].map(([v, l]) => `<button type="button" data-bwa-side="${v}" class="${S.bwaSide === v ? 'on' : ''}" title="Côté au vent des bwa dressés">Bwa ${l}</button>`).join('')}</div>
+          <div class="chip bg-slate-100 text-slate-700 h-9 px-1.5 gap-1"><button type="button" data-fonds="-1" class="w-7 h-7 rounded-md bg-white font-bold cursor-pointer" aria-label="Retirer un fond">−</button><span class="px-1">${S.fondCount} fond${S.fondCount > 1 ? 's' : ''}</span><button type="button" data-fonds="1" class="w-7 h-7 rounded-md bg-white font-bold cursor-pointer" aria-label="Ajouter un fond">+</button></div>`;
         $('[data-canvas]').innerHTML = yoleSVG({
             config: config(), roles, members: drawingMembers, assignments: S.assignments, selected: S.selected,
             interactive: true, wind: S.wind.dir === null || S.wind.dir === '' ? null : S.wind, boatColor: data.boatColor,
+            bwaSide: S.bwaSide, fondCount: S.fondCount,
         });
         $$('[data-balance]', root).forEach((el) => { el.innerHTML = balanceCard(b); });
         $('[data-role-filters]').innerHTML = ROLE_FILTERS.map((f) => `<button type="button" data-role-filter="${f}" class="chip whitespace-nowrap cursor-pointer ${S.roleFilter === f ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-600'}">${f === 'tous' ? 'Tous' : f === 'premiere_corde' ? 'Cordes' : e(roles[f]?.label)}</button>`).join('');
@@ -290,7 +301,7 @@ export function mountCrewPlanEditor(root) {
 
     // ---------- events ----------
     document.addEventListener('click', async (event) => {
-        const t = event.target.closest('[data-pos],[data-member],[data-config],[data-place],[data-role-filter],[data-action]');
+        const t = event.target.closest('[data-pos],[data-member],[data-config],[data-place],[data-role-filter],[data-bwa-side],[data-fonds],[data-action]');
         if (!t) return;
         const d = t.dataset;
         if (d.pos) { S.selected = S.selected === d.pos ? null : d.pos; render(); return; }
@@ -301,6 +312,8 @@ export function mountCrewPlanEditor(root) {
             return;
         }
         if (d.config) { if (+d.config !== S.configId) switchConfiguration(+d.config); return; }
+        if (d.bwaSide) { if (d.bwaSide !== S.bwaSide) { S.bwaSide = d.bwaSide; changed(); } return; }
+        if (d.fonds) { setFondCount(S.fondCount + +d.fonds); return; }
         if (d.place && S.selected && S.assignments[S.selected]) { S.assignments[S.selected].placement = d.place; changed(); return; }
         if (d.roleFilter) { S.roleFilter = d.roleFilter; render(); return; }
         switch (d.action) {
@@ -316,7 +329,7 @@ export function mountCrewPlanEditor(root) {
                 const b = stats();
                 const modal = document.querySelector('[data-validate-modal]');
                 modal.querySelector('[data-validate-summary]').textContent = `${config().name} · ${b.filled}/${b.positions} postes · ${kg(b.total)} à bord. Le plan sera figé pour cette sortie (il reste modifiable en le rouvrant).`;
-                modal.querySelector('[data-validate-sides]').textContent = `${kg(b.babord)} / ${kg(b.tribord)}`;
+                modal.querySelector('[data-validate-sides]').textContent = `${b.bwaCount} · ${kg(b.bwa)} (${S.bwaSide === 'tribord' ? 'tribord' : 'bâbord'})`;
                 modal.querySelector('[data-validate-ends]').textContent = `${kg(b.avant)} / ${kg(b.arriere)}`;
                 modal.querySelector('[data-validate-submit]').disabled = b.filled === 0;
                 modal.classList.replace('hidden', 'grid');
@@ -383,6 +396,8 @@ export function mountCrewPlanEditor(root) {
         if (!configuration) return;
         S.configId = configuration.id;
         S.wind = { dir: state.wind_direction, kts: state.wind_strength };
+        S.bwaSide = state.bwa_side || S.bwaSide;
+        S.fondCount = state.fond_count ?? S.fondCount;
         S.assignments = Object.fromEntries(state.assignments
             .map((a) => [configuration.positions.find((p) => p.id === a.position_id)?.code, { member_id: a.member_id, placement: a.bwa_placement }])
             .filter(([code]) => code));

@@ -20,8 +20,8 @@ class BoatController extends Controller
 {
     /** Configurations created with every new boat. */
     public const DEFAULT_CONFIGURATIONS = [
-        ['name' => '1 voile', 'sail_count' => 1, 'bwa_count' => 3, 'is_default' => false],
-        ['name' => '2 voiles', 'sail_count' => 2, 'bwa_count' => 4, 'is_default' => true],
+        ['name' => '1 voile (misaine)', 'sail_count' => 1, 'bwa_count' => 9, 'cordes_count' => 0, 'ecoute_count' => 2, 'pagaie_count' => 2, 'is_default' => false],
+        ['name' => '2 voiles', 'sail_count' => 2, 'bwa_count' => 8, 'cordes_count' => 2, 'ecoute_count' => 4, 'pagaie_count' => 2, 'is_default' => true],
     ];
 
     public function index(Request $request, CrewPlanPresenter $presenter): View

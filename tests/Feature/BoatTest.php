@@ -39,9 +39,9 @@ class BoatTest extends TestCase
             ->assertSee('Rhum Clément')
             ->assertSee('Opérationnelle')
             ->assertSee('Indisponible')
-            ->assertSee('2 voiles · 4 bwa · défaut')
-            ->assertSee('1 voile · 3 bwa')
-            ->assertSee('15 postes')
+            ->assertSee('2 voiles · 8 bwa · défaut')
+            ->assertSee('1 voile · 9 bwa')
+            ->assertSee('17 postes + fonds')
             ->assertSee(route('boats.create'));
     }
 
@@ -53,8 +53,10 @@ class BoatTest extends TestCase
         $this->get(route('boats.show', $boat))
             ->assertOk()
             ->assertSee('Ti-Bwa · Configuration')
-            ->assertSee('Postes (15)')
-            ->assertSee('Bwa dressé bâbord 4')
+            ->assertSee('Postes (17 + 4 places de fond au choix)')
+            ->assertSee('Bwa dressé 8 (dernier)')
+            ->assertSee('Écoute grande voile 2')
+            ->assertSee('2ème corde')
             ->assertSee('Pagaie 2')
             ->assertSee(route('boats.configurations.update', [$boat, $boat->configurations()->where('is_default', true)->first()]))
             ->assertSee('Nouvelle configuration');
@@ -68,8 +70,9 @@ class BoatTest extends TestCase
 
         $this->get(route('boats.show', [$boat, 'configuration' => $single->id]))
             ->assertOk()
-            ->assertSee('Postes (11)')
-            ->assertDontSee('Bwa dressé bâbord 4');
+            ->assertSee('Postes (14 + 4 places de fond au choix)')
+            ->assertSee('Bwa dressé 9 (dernier)')
+            ->assertDontSee('Écoute grande voile');
     }
 
     public function test_admin_can_create_a_boat_with_two_generated_configurations(): void
@@ -93,9 +96,9 @@ class BoatTest extends TestCase
         $this->assertSame('vert', $boat->hull_color);
 
         $configurations = $boat->configurations()->withCount('positions')->orderBy('name')->get();
-        $this->assertSame(['1 voile', '2 voiles'], $configurations->pluck('name')->all());
+        $this->assertSame(['1 voile (misaine)', '2 voiles'], $configurations->pluck('name')->all());
         $this->assertSame([false, true], $configurations->pluck('is_default')->all());
-        $this->assertSame([11, 15], $configurations->pluck('positions_count')->all());
+        $this->assertSame([18, 21], $configurations->pluck('positions_count')->all());
     }
 
     public function test_boat_creation_is_validated(): void
@@ -130,16 +133,16 @@ class BoatTest extends TestCase
         $configuration = $boat->configurations()->where('is_default', true)->first();
 
         $this->put(route('boats.configurations.update', [$boat, $configuration]), [
-            'name' => '2 voiles large', 'sail_count' => 2, 'bwa_count' => 6, 'is_default' => '1',
+            'name' => '2 voiles large', 'sail_count' => 2, 'bwa_count' => 10, 'is_default' => '1',
         ])
             ->assertRedirect(route('boats.show', [$boat, 'configuration' => $configuration->id]))
             ->assertSessionHasNoErrors();
 
         $configuration->refresh();
         $this->assertSame('2 voiles large', $configuration->name);
-        $this->assertSame(6, $configuration->bwa_count);
-        $this->assertSame(19, $configuration->positions()->count());
-        $this->assertSame(12, $configuration->positions()->whereNotNull('bwa_index')->count());
+        $this->assertSame(10, $configuration->bwa_count);
+        $this->assertSame(23, $configuration->positions()->count());
+        $this->assertSame(10, $configuration->positions()->whereNotNull('bwa_index')->count());
     }
 
     public function test_changing_counts_is_refused_when_a_crew_plan_uses_the_configuration(): void
@@ -150,13 +153,13 @@ class BoatTest extends TestCase
         $this->crewPlanFor($boat, $configuration);
 
         $this->put(route('boats.configurations.update', [$boat, $configuration]), [
-            'name' => '2 voiles', 'sail_count' => 2, 'bwa_count' => 5,
+            'name' => '2 voiles', 'sail_count' => 2, 'bwa_count' => 7,
         ])->assertSessionHasErrorsIn('configuration', [
-            'bwa_count' => 'Configuration utilisée par 1 plan(s) d’équipage : créez plutôt une nouvelle configuration.',
+            'bwa_count' => 'Configuration utilisée par 1 plan(s) d’équipage : pour changer l’équipage, créez plutôt une nouvelle configuration.',
         ]);
 
-        $this->assertSame(4, $configuration->fresh()->bwa_count);
-        $this->assertSame(15, $configuration->positions()->count());
+        $this->assertSame(8, $configuration->fresh()->bwa_count);
+        $this->assertSame(21, $configuration->positions()->count());
     }
 
     public function test_renaming_a_used_configuration_is_allowed(): void
@@ -168,7 +171,7 @@ class BoatTest extends TestCase
         $positionIds = $configuration->positions()->pluck('id')->all();
 
         $this->put(route('boats.configurations.update', [$boat, $configuration]), [
-            'name' => 'Tour des Yoles', 'sail_count' => 2, 'bwa_count' => 4,
+            'name' => 'Tour des Yoles', 'sail_count' => 2, 'bwa_count' => 8,
         ])->assertSessionHasNoErrors();
 
         $this->assertSame('Tour des Yoles', $configuration->fresh()->name);
@@ -183,7 +186,7 @@ class BoatTest extends TestCase
         $double = $boat->configurations()->where('name', '2 voiles')->first();
 
         $this->put(route('boats.configurations.update', [$boat, $single]), [
-            'name' => '1 voile', 'sail_count' => 1, 'bwa_count' => 3, 'is_default' => '1',
+            'name' => '1 voile', 'sail_count' => 1, 'bwa_count' => 9, 'is_default' => '1',
         ])->assertSessionHasNoErrors();
 
         $this->assertTrue($single->fresh()->is_default);
@@ -202,7 +205,7 @@ class BoatTest extends TestCase
         $created = $boat->configurations()->where('name', 'Petit temps')->firstOrFail();
         $this->assertTrue($created->is_default);
         $this->assertSame(1, $boat->configurations()->where('is_default', true)->count());
-        $this->assertSame(11, $created->positions()->count());
+        $this->assertSame(15, $created->positions()->count());
     }
 
     public function test_configuration_validation_uses_its_own_error_bag(): void
@@ -210,7 +213,7 @@ class BoatTest extends TestCase
         $user = $this->signInAdmin();
         $boat = $this->boatWithConfigurations($user->association);
 
-        $this->post(route('boats.configurations.store', $boat), ['name' => '', 'sail_count' => 3, 'bwa_count' => 7])
+        $this->post(route('boats.configurations.store', $boat), ['name' => '', 'sail_count' => 3, 'bwa_count' => 13])
             ->assertSessionHasErrorsIn('newConfiguration', ['name', 'sail_count', 'bwa_count']);
     }
 
@@ -320,7 +323,7 @@ class BoatTest extends TestCase
 
         $this->get(route('boats.show', $boat))
             ->assertOk()
-            ->assertSee('Postes (15)')
+            ->assertSee('Postes (17 + 4 places de fond au choix)')
             ->assertDontSee('Enregistrer la yole')
             ->assertDontSee('Supprimer la yole')
             ->assertDontSee('Nouvelle configuration');
@@ -376,8 +379,8 @@ class BoatTest extends TestCase
         $boat = Boat::factory()->for($association)->create($attributes);
         $generator = app(BoatLayoutGenerator::class);
 
-        $generator->generate($boat->configurations()->create(['name' => '1 voile', 'sail_count' => 1, 'bwa_count' => 3, 'is_default' => false]));
-        $generator->generate($boat->configurations()->create(['name' => '2 voiles', 'sail_count' => 2, 'bwa_count' => 4, 'is_default' => true]));
+        $generator->generate($boat->configurations()->create(['name' => '1 voile', 'sail_count' => 1, 'bwa_count' => 9, 'is_default' => false]));
+        $generator->generate($boat->configurations()->create(['name' => '2 voiles', 'sail_count' => 2, 'bwa_count' => 8, 'is_default' => true]));
 
         return $boat;
     }

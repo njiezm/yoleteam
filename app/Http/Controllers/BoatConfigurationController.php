@@ -19,7 +19,7 @@ class BoatConfigurationController extends Controller
 
     public function store(Request $request, Boat $boat): RedirectResponse
     {
-        $data = $request->validateWithBag('newConfiguration', $this->rules());
+        $data = $this->validated($request, 'newConfiguration');
 
         $configuration = DB::transaction(function () use ($request, $boat, $data) {
             $isDefault = $request->boolean('is_default') || ! $boat->configurations()->where('is_default', true)->exists();
@@ -40,14 +40,16 @@ class BoatConfigurationController extends Controller
 
     public function update(Request $request, Boat $boat, BoatConfiguration $configuration): RedirectResponse
     {
-        $data = $request->validateWithBag('configuration', $this->rules());
+        $data = $this->validated($request, 'configuration');
 
-        $layoutChanged = (int) $data['sail_count'] !== $configuration->sail_count
-            || (int) $data['bwa_count'] !== $configuration->bwa_count;
+        // Compare effective counts: an empty count means the usual value of the rig.
+        $current = [...BoatLayoutGenerator::defaults($configuration->sail_count), ...array_filter($configuration->only(['bwa_count', 'cordes_count', 'ecoute_count', 'pagaie_count']), fn ($value) => $value !== null)];
+        $layoutChanged = $data['sail_count'] !== $configuration->sail_count
+            || collect(['bwa_count', 'cordes_count', 'ecoute_count', 'pagaie_count'])->contains(fn (string $field) => $data[$field] !== $current[$field]);
 
         if ($layoutChanged && ($plans = $configuration->crewPlans()->withTrashed()->count()) > 0) {
             throw ValidationException::withMessages([
-                'bwa_count' => "Configuration utilisée par {$plans} plan(s) d’équipage : créez plutôt une nouvelle configuration.",
+                'bwa_count' => "Configuration utilisée par {$plans} plan(s) d’équipage : pour changer l’équipage, créez plutôt une nouvelle configuration.",
             ])->errorBag('configuration');
         }
 
@@ -97,15 +99,28 @@ class BoatConfigurationController extends Controller
     }
 
     /**
-     * @return array<string, array<int, string>>
+     * Crew counts left empty take the usual values of the rig (BoatLayoutGenerator::defaults()).
+     *
+     * @return array<string, mixed>
      */
-    private function rules(): array
+    private function validated(Request $request, string $bag): array
     {
-        return [
+        $data = $request->validateWithBag($bag, [
             'name' => ['required', 'string', 'max:255'],
             'sail_count' => ['required', 'integer', 'in:1,2'],
-            'bwa_count' => ['required', 'integer', 'between:1,6'],
+            'bwa_count' => ['nullable', 'integer', 'between:1,12'],
+            'cordes_count' => ['nullable', 'integer', 'between:0,2'],
+            'ecoute_count' => ['nullable', 'integer', 'between:1,4'],
+            'pagaie_count' => ['nullable', 'integer', 'between:0,3'],
             'is_default' => ['boolean'],
+        ]);
+
+        $defaults = BoatLayoutGenerator::defaults((int) $data['sail_count']);
+
+        return [
+            ...$data,
+            'sail_count' => (int) $data['sail_count'],
+            ...collect($defaults)->map(fn (int $default, string $field) => isset($data[$field]) ? (int) $data[$field] : $default)->all(),
         ];
     }
 }

@@ -26,6 +26,7 @@
                     </div>
                 @endif
                 <div class="seg" data-configs></div>
+                <div class="flex flex-wrap items-center gap-2" data-crew-options></div>
                 <label class="chip bg-slate-100 text-slate-700 h-9 pl-3 pr-1 gap-1">
                     <x-icon name="wind" class="w-4 h-4" /><span class="sr-only">Vent</span>
                     <select data-wind-dir class="bg-transparent font-semibold focus:outline-none cursor-pointer" aria-label="Direction du vent">
@@ -88,7 +89,7 @@
                 <h3 class="text-lg font-extrabold mt-4">Valider le plan d’équipage ?</h3>
                 <p class="text-sm muted mt-1" data-validate-summary></p>
                 <div class="mt-4 rounded-xl bg-slate-50 p-3 text-sm space-y-1.5">
-                    <p class="flex justify-between"><span class="muted">Bâbord / tribord</span><b data-validate-sides></b></p>
+                    <p class="flex justify-between"><span class="muted">Bwa au vent</span><b data-validate-sides></b></p>
                     <p class="flex justify-between"><span class="muted">Avant / arrière</span><b data-validate-ends></b></p>
                 </div>
                 <div class="grid grid-cols-2 gap-2 mt-5">

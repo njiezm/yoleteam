@@ -31,6 +31,8 @@
             'Version '.$plan->version,
             $balance['filled'].'/'.$balance['positions'].' postes',
             $plan->configuration->name,
+            'bwa au vent '.mb_strtolower(($plan->bwa_side ?? \App\Enums\BoatSide::Babord)->label()),
+            $plan->fond_count ? $plan->fond_count.' fond(s)' : null,
             $plan->wind_direction !== null ? 'vent '.\App\Services\CrewPlanPresenter::windLabel($plan->wind_direction).($plan->wind_strength ? ' '.$plan->wind_strength.' nds' : '') : null,
             round($balance['total']).' kg à bord',
             $outing->sea_state ? 'mer '.mb_strtolower($outing->sea_state->label()) : null,
@@ -85,7 +87,7 @@
             <div class="card p-4 sm:col-span-2">
                 <p class="font-bold mb-2 flex items-center gap-2"><x-icon name="scale" class="w-4 h-4" />Équilibre</p>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                    @foreach (['Bâbord' => $balance['babord'], 'Tribord' => $balance['tribord'], 'Avant' => $balance['avant'], 'Arrière' => $balance['arriere']] as $label => $weight)
+                    @foreach (['Bwa au vent ('.$balance['bwa_count'].')' => $balance['bwa'], 'Avant' => $balance['avant'], 'Arrière' => $balance['arriere'], 'Total' => $balance['total']] as $label => $weight)
                         <div class="rounded-lg bg-slate-50 p-2"><p class="text-[10px] muted font-bold uppercase">{{ $label }}</p><p class="font-extrabold">{{ round($weight) }} kg</p></div>
                     @endforeach
                 </div>

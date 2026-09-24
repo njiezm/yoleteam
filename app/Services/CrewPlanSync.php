@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 class CrewPlanSync
 {
     /**
-     * @param  array{boat_configuration_id: int, wind_direction?: int|null, wind_strength?: int|null, notes?: string|null, assignments: list<array{position_id: int, member_id: int, bwa_placement?: string|null}>}  $state
+     * @param  array{boat_configuration_id: int, wind_direction?: int|null, wind_strength?: int|null, bwa_side?: string|null, fond_count?: int|null, notes?: string|null, assignments: list<array{position_id: int, member_id: int, bwa_placement?: string|null}>}  $state
      */
     public function sync(CrewPlan $plan, array $state): CrewPlan
     {
@@ -48,6 +48,8 @@ class CrewPlanSync
                 'boat_configuration_id' => $state['boat_configuration_id'],
                 'wind_direction' => $state['wind_direction'] ?? null,
                 'wind_strength' => $state['wind_strength'] ?? null,
+                'bwa_side' => $state['bwa_side'] ?? $plan->bwa_side ?? 'babord',
+                'fond_count' => $state['fond_count'] ?? $plan->fond_count,
                 'notes' => $state['notes'] ?? $plan->notes,
             ]);
 

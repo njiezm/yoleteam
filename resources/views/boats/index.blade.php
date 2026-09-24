@@ -45,7 +45,7 @@
                                 </div>
                                 <div>
                                     <dt class="text-[11px] font-bold uppercase muted">Équipage</dt>
-                                    <dd class="font-bold">{{ $default ? $default->positions->count().' postes' : '—' }}</dd>
+                                    <dd class="font-bold">{{ $default ? $default->crewSeatCount().' postes + fonds' : '—' }}</dd>
                                 </div>
                             </dl>
                             <p class="text-[11px] font-bold uppercase muted mt-4 mb-1.5">Configurations</p>

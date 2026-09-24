@@ -115,21 +115,31 @@ class CrewPlanPresenter
                 ? ['dir' => $plan->wind_direction, 'kts' => $plan->wind_strength]
                 : null,
             'boatColor' => $boat->color(),
+            'bwaSide' => $plan?->bwa_side?->value ?? BoatSide::Babord->value,
+            'fondCount' => $plan?->fond_count ?? 1,
             'labels' => $options['labels'] ?? true,
             'compact' => $options['compact'] ?? false,
         ];
     }
 
+    /** Whether a seat is used by the plan (fond / écopeur seats beyond the plan's fond_count are hidden). */
+    public static function isSeatUsed(BoatPosition $position, ?CrewPlan $plan): bool
+    {
+        $fond = BoatLayoutGenerator::fondIndex($position->code);
+
+        return $fond === null || $fond <= ($plan?->fond_count ?? 1);
+    }
+
     /**
-     * Informative weight distribution of a plan (declared weights only).
+     * Informative weight distribution of a plan (declared weights only). All bwa dressés sit on the windward side.
      *
-     * @return array{babord: float, tribord: float, avant: float, arriere: float, total: float, filled: int, positions: int, diff: float}
+     * @return array{bwa: float, bwa_count: int, avant: float, arriere: float, total: float, filled: int, positions: int}
      */
     public function balance(CrewPlan $plan): array
     {
         $plan->loadMissing('assignments.position', 'assignments.member', 'configuration.positions');
 
-        $balance = ['babord' => 0.0, 'tribord' => 0.0, 'avant' => 0.0, 'arriere' => 0.0, 'total' => 0.0, 'filled' => 0];
+        $balance = ['bwa' => 0.0, 'bwa_count' => 0, 'avant' => 0.0, 'arriere' => 0.0, 'total' => 0.0, 'filled' => 0];
 
         foreach ($plan->assignments as $assignment) {
             $weight = (float) $assignment->member->weight_kg;
@@ -139,17 +149,15 @@ class CrewPlanPresenter
             $balance['total'] += $weight;
             $balance[$position->y < 50 ? 'avant' : 'arriere'] += $weight;
 
-            if ($position->side === BoatSide::Babord) {
-                $balance['babord'] += $weight;
-            } elseif ($position->side === BoatSide::Tribord) {
-                $balance['tribord'] += $weight;
+            if ($position->bwa_index !== null) {
+                $balance['bwa'] += $weight;
+                $balance['bwa_count']++;
             }
         }
 
         return [
             ...$balance,
-            'positions' => $plan->configuration->positions->count(),
-            'diff' => $balance['babord'] - $balance['tribord'],
+            'positions' => $plan->configuration->positions->filter(fn (BoatPosition $position) => self::isSeatUsed($position, $plan))->count(),
         ];
     }
 
@@ -165,9 +173,9 @@ class CrewPlanPresenter
         return $plan->assignments
             ->sortBy(fn (CrewAssignment $assignment) => $assignment->position->sort_order)
             ->groupBy(fn (CrewAssignment $assignment) => match (true) {
-                $assignment->position->side === BoatSide::Babord && $assignment->position->bwa_index !== null => 'Bwa dressés bâbord',
-                $assignment->position->side === BoatSide::Tribord && $assignment->position->bwa_index !== null => 'Bwa dressés tribord',
-                $assignment->position->y < 50 => 'Avant & gréement',
+                $assignment->position->bwa_index !== null => 'Bwa dressés · au vent '.mb_strtolower(($plan->bwa_side ?? BoatSide::Babord)->label()),
+                BoatLayoutGenerator::fondIndex($assignment->position->code) !== null => 'Fonds / écopeurs',
+                $assignment->position->y < 50 => 'Avant & voiles',
                 default => 'Arrière',
             });
     }

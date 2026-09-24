@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BoatSide;
 use App\Enums\CrewPlanStatus;
 use App\Models\Concerns\HasClientUuid;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
-    'uuid', 'outing_id', 'boat_id', 'boat_configuration_id', 'wind_direction', 'wind_strength',
+    'uuid', 'outing_id', 'boat_id', 'boat_configuration_id', 'wind_direction', 'wind_strength', 'bwa_side', 'fond_count',
     'status', 'validated_at', 'validated_by', 'version', 'notes', 'created_by',
 ])]
 class CrewPlan extends Model
@@ -24,6 +25,8 @@ class CrewPlan extends Model
             'status' => CrewPlanStatus::class,
             'wind_direction' => 'integer',
             'wind_strength' => 'integer',
+            'bwa_side' => BoatSide::class,
+            'fond_count' => 'integer',
             'validated_at' => 'datetime',
             'version' => 'integer',
         ];

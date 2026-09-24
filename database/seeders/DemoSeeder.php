@@ -83,8 +83,8 @@ class DemoSeeder extends Seeder
 
         foreach ($boats as $boat) {
             foreach ([
-                ['name' => '1 voile', 'sail_count' => 1, 'bwa_count' => 3, 'is_default' => false],
-                ['name' => '2 voiles', 'sail_count' => 2, 'bwa_count' => 4, 'is_default' => true],
+                ['name' => '1 voile (misaine)', 'sail_count' => 1, 'bwa_count' => 9, 'is_default' => false],
+                ['name' => '2 voiles', 'sail_count' => 2, 'bwa_count' => 8, 'is_default' => true],
             ] as $config) {
                 $this->layoutGenerator->generate($boat->configurations()->create($config));
             }
@@ -214,8 +214,10 @@ class DemoSeeder extends Seeder
             'boat_configuration_id' => $configuration->id,
             'wind_direction' => 90,
             'wind_strength' => 16,
+            'bwa_side' => 'babord',
+            'fond_count' => 1,
             'status' => CrewPlanStatus::Brouillon,
-            'notes' => 'Alizé d\'est soutenu, 4 bwa dressés.',
+            'notes' => 'Alizé d\'est soutenu, 8 bwa dressés au vent.',
             'created_by' => $patron->id,
         ]);
 
@@ -223,7 +225,11 @@ class DemoSeeder extends Seeder
         $used = collect();
         $placements = BwaPlacement::cases();
 
-        foreach ($configuration->positions()->with('crewRole')->get() as $position) {
+        // One fond / écopeur on board: the other fond seats stay unused.
+        $positions = $configuration->positions()->with('crewRole')->get()
+            ->reject(fn ($position) => (BoatLayoutGenerator::fondIndex($position->code) ?? 0) > $plan->fond_count);
+
+        foreach ($positions as $position) {
             $code = $position->crewRole->code;
             $available = $members->reject(fn (Member $m) => $used->contains($m->id));
 

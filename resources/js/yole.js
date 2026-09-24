@@ -17,10 +17,18 @@ export function windLabel(degrees) {
     return COMPASS[Math.round((((+degrees % 360) + 360) % 360) / 22.5) % 16];
 }
 
-function seatX(position, placement) {
+/** Bwa dressés all sit on the windward side (bwaSide); stored coordinates are on the babord side. */
+function seatX(position, placement, bwaSide) {
     if (position.role !== 'dresseur') return X(position.x);
     const offset = PLACEMENT_X[placement || 'milieu'];
-    return X(position.side === 'babord' ? offset : 100 - offset);
+    return X(bwaSide === 'tribord' ? 100 - offset : offset);
+}
+
+export const fondIndex = (code) => { const m = /^fond_(\d+)$/.exec(code); return m ? +m[1] : null; };
+
+/** Seats used by a plan: fond / écopeur seats beyond fondCount are hidden. */
+export function visiblePositions(positions, fondCount) {
+    return positions.filter((p) => { const f = fondIndex(p.code); return f === null || fondCount === null || fondCount === undefined || f <= fondCount; });
 }
 
 /**
@@ -33,10 +41,11 @@ function seatX(position, placement) {
 export function yoleSVG(opts) {
     const {
         config, roles, members = {}, assignments = {}, selected = null, interactive = false,
-        wind = null, compact = false, labels = true, boatColor = '#0B2545',
+        wind = null, compact = false, labels = true, boatColor = '#0B2545', bwaSide = 'babord', fondCount = 1,
     } = opts;
     const id = `yl${++instance}`;
-    const positions = config.positions;
+    const positions = visiblePositions(config.positions, fondCount);
+    const windward = bwaSide === 'tribord' ? 'tribord' : 'babord';
     const bwaYs = [...new Set(positions.filter((p) => p.role === 'dresseur').map((p) => p.y))].sort((a, b) => a - b);
     const r = compact ? 20 : 23;
 
@@ -52,17 +61,18 @@ export function yoleSVG(opts) {
     <rect width="${W}" height="${H}" rx="18" fill="url(#${id}-waves)" opacity=".7"/>
     <text x="${W / 2}" y="14" text-anchor="middle" class="yl-dir">▲ AVANT</text>
     <text x="${W / 2}" y="${H - 6}" text-anchor="middle" class="yl-dir">ARRIÈRE ▼</text>
-    <text x="16" y="${H / 2}" class="yl-side" transform="rotate(-90 16 ${H / 2})" text-anchor="middle">BÂBORD</text>
-    <text x="${W - 16}" y="${H / 2}" class="yl-side" transform="rotate(90 ${W - 16} ${H / 2})" text-anchor="middle">TRIBORD</text>
+    <text x="16" y="${H / 2}" class="yl-side" transform="rotate(-90 16 ${H / 2})" text-anchor="middle">BÂBORD${windward === 'babord' ? ' · AU VENT' : ''}</text>
+    <text x="${W - 16}" y="${H / 2}" class="yl-side" transform="rotate(90 ${W - 16} ${H / 2})" text-anchor="middle">TRIBORD${windward === 'tribord' ? ' · AU VENT' : ''}</text>
     <path d="M186 790 Q200 812 214 790" fill="none" stroke="#fff" stroke-width="3" opacity=".8"/>
     <line x1="214" y1="746" x2="262" y2="806" stroke="#7C4A1E" stroke-width="6" stroke-linecap="round"/>
     <ellipse cx="266" cy="811" rx="9" ry="16" transform="rotate(-38 266 811)" fill="#9A6431"/>`;
 
-    // Bwa dressés: poles crossing the hull from side to side.
+    // Bwa dressés: one pole per dresseur, wedged across the hull and sticking out on the windward side.
+    const poleX = windward === 'babord' ? 26 : 146;
     bwaYs.forEach((y, i) => {
         const yy = Y(y);
-        s += `<rect x="26" y="${yy - 5}" width="${W - 52}" height="10" rx="5" fill="url(#${id}-wood)" stroke="#6B3F16" stroke-width="1"/>
-              <text x="${W / 2}" y="${yy - 9}" text-anchor="middle" class="yl-bwa-label">bwa ${i + 1}</text>`;
+        s += `<rect x="${poleX}" y="${yy - 5}" width="${W - 26 - 146}" height="10" rx="5" fill="url(#${id}-wood)" stroke="#6B3F16" stroke-width="1"/>
+              <text x="${windward === 'babord' ? 138 : W - 138}" y="${yy - 9}" text-anchor="${windward === 'babord' ? 'end' : 'start'}" class="yl-bwa-label">bwa ${i + 1}</text>`;
     });
 
     s += `<path d="M200 26 C238 92 260 222 260 400 C260 598 252 702 238 754 Q200 794 162 754 C148 702 140 598 140 400 C140 222 162 92 200 26 Z"
@@ -94,15 +104,15 @@ export function yoleSVG(opts) {
         const role = roles[p.role] || { color: '#64748B', short: '?' };
         const assignment = assignments[p.code];
         const member = assignment ? members[assignment.member_id] : null;
-        const cx = seatX(p, assignment?.placement);
+        const cx = seatX(p, assignment?.placement, windward);
         const cy = Y(p.y);
         const attrs = interactive
             ? `data-pos="${escapeHtml(p.code)}" class="yl-pos cursor-pointer" tabindex="0" role="button" aria-label="${escapeHtml(p.label)}${member ? ' : ' + escapeHtml(member.short) : ''}"`
             : 'class="yl-pos"';
         s += `<g ${attrs}>`;
         if (p.role === 'dresseur') {
-            const x0 = X(p.side === 'babord' ? PLACEMENT_X.exterieur : 100 - PLACEMENT_X.interieur);
-            const x1 = X(p.side === 'babord' ? PLACEMENT_X.interieur : 100 - PLACEMENT_X.exterieur);
+            const x0 = X(windward === 'babord' ? PLACEMENT_X.exterieur : 100 - PLACEMENT_X.interieur);
+            const x1 = X(windward === 'babord' ? PLACEMENT_X.interieur : 100 - PLACEMENT_X.exterieur);
             s += `<line x1="${x0}" y1="${cy}" x2="${x1}" y2="${cy}" stroke="#fff" stroke-width="2" stroke-dasharray="2 5" opacity=".9"/>`;
         }
         if (selected === p.code) {
@@ -137,7 +147,7 @@ export function yoleSVG(opts) {
  * @param {(id:number) => {kg:number}|undefined} memberById
  */
 export function balance(positions, assignments, memberById) {
-    const result = { babord: 0, tribord: 0, avant: 0, arriere: 0, total: 0, filled: 0, positions: positions.length };
+    const result = { bwa: 0, bwaCount: 0, avant: 0, arriere: 0, total: 0, filled: 0, positions: positions.length };
     positions.forEach((p) => {
         const assignment = assignments[p.code];
         const member = assignment && memberById(assignment.member_id);
@@ -146,10 +156,8 @@ export function balance(positions, assignments, memberById) {
         result.filled++;
         result.total += kg;
         result[p.y < 50 ? 'avant' : 'arriere'] += kg;
-        if (p.side === 'babord') result.babord += kg;
-        if (p.side === 'tribord') result.tribord += kg;
+        if (p.role === 'dresseur') { result.bwa += kg; result.bwaCount++; }
     });
-    result.diff = result.babord - result.tribord;
     return result;
 }
 

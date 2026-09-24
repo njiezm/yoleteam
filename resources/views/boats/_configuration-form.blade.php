@@ -5,7 +5,8 @@
 @php
     $old = fn (string $key, mixed $default = null) => old('_form') === $formKey ? old($key, $default) : $default;
     $sails = (int) $old('sail_count', $configuration?->sail_count ?? 2);
-    $bwa = (int) $old('bwa_count', $configuration?->bwa_count ?? 4);
+    $defaults = \App\Services\BoatLayoutGenerator::defaults($sails);
+    $crewCount = fn (string $field) => $old($field, $configuration?->{$field} ?? $defaults[$field]);
     $locked = $configuration && $configuration->crew_plans_count > 0;
 @endphp
 <form method="POST" action="{{ $action }}" id="{{ $id }}">
@@ -27,15 +28,22 @@
             </div>
             @include('boats._error', ['bag' => $bag, 'key' => 'sail_count'])
         </div>
-        <div>
-            <span class="label">Bwa dressés par bord</span>
-            <div class="seg w-full">
-                @foreach (range(1, 6) as $count)
-                    <label class="flex-1 justify-center px-0"><input type="radio" name="bwa_count" value="{{ $count }}" class="sr-only" @checked($bwa === $count)>{{ $count }}</label>
-                @endforeach
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+        @foreach ([
+            'bwa_count' => ['Bwa dressés', 1, 12, 'Tous au vent'],
+            'ecoute_count' => ['Écoutes', 1, 4, $sails >= 2 ? 'Petite + grande voile' : 'Une voile'],
+            'cordes_count' => ['Cordes', 0, 2, 'À l’avant (2 voiles)'],
+            'pagaie_count' => ['Pagaies', 0, 3, 'Sans compter le patron'],
+        ] as $field => [$label, $min, $max, $hint])
+            <div>
+                <label class="label" for="{{ $id }}-{{ $field }}">{{ $label }}</label>
+                <input id="{{ $id }}-{{ $field }}" name="{{ $field }}" type="number" min="{{ $min }}" max="{{ $max }}" inputmode="numeric"
+                       value="{{ $crewCount($field) }}" placeholder="{{ $defaults[$field] }}" @class(['input', 'input-error' => $bag->has($field)])>
+                <p class="text-[11px] muted mt-1">{{ $hint }}</p>
+                @include('boats._error', ['bag' => $bag, 'key' => $field])
             </div>
-            @include('boats._error', ['bag' => $bag, 'key' => 'bwa_count'])
-        </div>
+        @endforeach
     </div>
     <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
         <label class="flex items-center gap-2 text-sm font-semibold">
@@ -51,11 +59,11 @@
     </div>
     <p class="text-xs muted mt-3">
         @if ($locked)
-            <x-icon name="lock" class="w-3.5 h-3.5 inline -mt-0.5" /> Utilisée par {{ $configuration->crew_plans_count }} plan(s) d’équipage : le nombre de voiles et de bwa ne peut plus changer.
+            <x-icon name="lock" class="w-3.5 h-3.5 inline -mt-0.5" /> Utilisée par {{ $configuration->crew_plans_count }} plan(s) d’équipage : la composition de l’équipage ne peut plus changer.
         @elseif ($configuration)
-            Changer le nombre de voiles ou de bwa régénère automatiquement les postes.
+            Changer la voilure ou le nombre de postes régénère automatiquement le plan de la yole. Fonds / écopeurs : réglés à chaque sortie dans le plan d’équipage.
         @else
-            Les postes sont générés automatiquement selon les voiles et les bwa.
+            Habituellement : misaine = 9 bwa, 2 écoutes, 2 pagaies ; 2 voiles = 8 bwa, 2 cordes, 4 écoutes, 2 pagaies (+ le patron). Fonds / écopeurs : réglés à chaque sortie.
         @endif
     </p>
 </form>

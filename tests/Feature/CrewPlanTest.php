@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\AttendanceStatus;
+use App\Enums\BoatSide;
 use App\Enums\CrewPlanStatus;
 use App\Models\Association;
 use App\Models\Boat;
@@ -39,7 +40,7 @@ class CrewPlanTest extends TestCase
     private function boatFor(Association $association): Boat
     {
         $boat = Boat::factory()->for($association)->create();
-        foreach ([['1 voile', 1, 3, false], ['2 voiles', 2, 4, true]] as [$name, $sails, $bwa, $default]) {
+        foreach ([['1 voile', 1, 9, false], ['2 voiles', 2, 8, true]] as [$name, $sails, $bwa, $default]) {
             app(BoatLayoutGenerator::class)->generate($boat->configurations()->create([
                 'name' => $name, 'sail_count' => $sails, 'bwa_count' => $bwa, 'is_default' => $default,
             ]));
@@ -90,7 +91,7 @@ class CrewPlanTest extends TestCase
         $plan = $this->plan();
         [$a, $b] = Member::factory()->for($this->user->association)->count(2)->create();
         $patron = $this->position($plan, 'patron');
-        $dresseur = $this->position($plan, 'dresseur_babord_1');
+        $dresseur = $this->position($plan, 'bwa_1');
         $url = route('crew-plans.update', [$this->outing, $plan]);
         $state = fn (array $assignments) => ['boat_configuration_id' => $plan->boat_configuration_id, 'wind_direction' => 90, 'wind_strength' => 15, 'assignments' => $assignments];
 
@@ -138,7 +139,7 @@ class CrewPlanTest extends TestCase
 
         $this->putJson($url, $base + ['assignments' => [
             ['position_id' => $this->position($plan, 'patron'), 'member_id' => $member->id],
-            ['position_id' => $this->position($plan, 'ecoute'), 'member_id' => $member->id],
+            ['position_id' => $this->position($plan, 'ecoute_gv_1'), 'member_id' => $member->id],
         ]])->assertJsonValidationErrors('assignments.1.member_id');
 
         $this->putJson($url, $base + ['assignments' => [['position_id' => $this->position($plan, 'patron'), 'member_id' => $foreign->id]]])
@@ -199,5 +200,43 @@ class CrewPlanTest extends TestCase
 
         $this->post(route('crew-plans.store', $this->outing), ['boat_id' => $this->boat->id])->assertRedirect();
         $this->assertSame(1, CrewPlan::count());
+    }
+
+    public function test_windward_side_and_fond_seats_are_saved_per_plan(): void
+    {
+        $plan = $this->plan();
+        [$a, $b] = Member::factory()->for($this->user->association)->count(2)->create();
+        $url = route('crew-plans.update', [$this->outing, $plan]);
+        $state = fn (int $fonds, array $assignments) => ['boat_configuration_id' => $plan->boat_configuration_id, 'bwa_side' => 'tribord', 'fond_count' => $fonds, 'assignments' => $assignments];
+
+        $this->putJson($url, $state(2, [
+            ['position_id' => $this->position($plan, 'fond_2'), 'member_id' => $a->id],
+            ['position_id' => $this->position($plan, 'bwa_8'), 'member_id' => $b->id, 'bwa_placement' => 'exterieur'],
+        ]))->assertOk();
+
+        $plan->refresh();
+        $this->assertSame(BoatSide::Tribord, $plan->bwa_side);
+        $this->assertSame(2, $plan->fond_count);
+
+        // A seat on a fond that the plan does not use is refused.
+        $this->putJson($url, $state(1, [['position_id' => $this->position($plan, 'fond_2'), 'member_id' => $a->id]]))
+            ->assertJsonValidationErrors('assignments');
+
+        $this->get(route('crew-plans.show', [$this->outing, $plan]))
+            ->assertOk()
+            ->assertSee('Bwa dressés · au vent tribord')
+            ->assertSee('Fonds / écopeurs')
+            ->assertSee('bwa au vent tribord');
+    }
+
+    public function test_default_rigs_follow_the_usual_crew_of_a_yole_ronde(): void
+    {
+        $counts = fn (int $sails) => $this->boat->configurations->firstWhere('sail_count', $sails)->positions
+            ->reject(fn ($position) => str_starts_with($position->code, 'fond_'))
+            ->countBy(fn ($position) => $position->crewRole->code)
+            ->all();
+
+        $this->boat->load('configurations.positions.crewRole');
+        $this->assertEquals(['patron' => 1, 'aide_patron' => 2, 'premiere_corde' => 1, 'deuxieme_corde' => 1, 'ecoute' => 4, 'dresseur' => 8], $counts(2));
     }
 }

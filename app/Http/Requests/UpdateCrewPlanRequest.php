@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\BoatSide;
 use App\Enums\BwaPlacement;
 use App\Models\BoatPosition;
 use App\Models\CrewPlan;
+use App\Services\BoatLayoutGenerator;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -39,6 +41,8 @@ class UpdateCrewPlanRequest extends FormRequest
             'boat_configuration_id' => ['required', 'integer', Rule::exists('boat_configurations', 'id')->where('boat_id', $plan->boat_id)],
             'wind_direction' => ['nullable', 'integer', 'between:0,359'],
             'wind_strength' => ['nullable', 'integer', 'between:0,60'],
+            'bwa_side' => ['nullable', Rule::in([BoatSide::Babord->value, BoatSide::Tribord->value])],
+            'fond_count' => ['nullable', 'integer', 'between:0,'.BoatLayoutGenerator::MAX_FONDS],
             'notes' => ['nullable', 'string', 'max:2000'],
             'assignments' => ['present', 'array'],
             'assignments.*.position_id' => ['required', 'integer', 'distinct'],
@@ -71,13 +75,20 @@ class UpdateCrewPlanRequest extends FormRequest
 
         $data = $validator->getData();
         $positionIds = collect($data['assignments'] ?? [])->pluck('position_id')->map(fn ($id) => (int) $id);
-        $valid = BoatPosition::query()
+        $codes = BoatPosition::query()
             ->where('boat_configuration_id', (int) $data['boat_configuration_id'])
             ->whereIn('id', $positionIds)
-            ->count();
+            ->pluck('code');
 
-        if ($valid !== $positionIds->count()) {
+        if ($codes->count() !== $positionIds->count()) {
             $validator->errors()->add('assignments', 'Certains postes n’appartiennent pas à cette configuration.');
+
+            return;
+        }
+
+        $fondCount = $data['fond_count'] ?? BoatLayoutGenerator::MAX_FONDS;
+        if ($codes->contains(fn (string $code) => (BoatLayoutGenerator::fondIndex($code) ?? 0) > $fondCount)) {
+            $validator->errors()->add('assignments', 'Un équipier est placé sur un fond qui n’est pas utilisé.');
         }
     }
 

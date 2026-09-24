@@ -64,7 +64,7 @@
                 <x-yole class="w-28 shrink-0 self-start" :data="$presenter->drawing($plan->boat, $plan->configuration, $plan, ['labels' => false, 'compact' => true, 'wind' => false])" />
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-2"><h3 class="text-lg font-extrabold">{{ $plan->boat->name }}</h3><x-plan-status :plan="$plan" /></div>
-                    <p class="text-sm muted">{{ $plan->configuration->name }} · {{ $plan->configuration->bwa_count }} bwa par bord</p>
+                    <p class="text-sm muted">{{ $plan->configuration->name }} · {{ $plan->configuration->bwa_count }} bwa dressés</p>
                     <x-bar class="mt-4" :value="$total ? $filled / $total * 100 : 0" :color="$plan->boat->color()" />
                     <p class="text-xs font-bold mt-1.5">{{ $filled }}/{{ $total }} postes pourvus</p>
                     @if ($filled)

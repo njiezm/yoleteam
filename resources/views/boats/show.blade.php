@@ -65,7 +65,7 @@
                             <dl class="grid grid-cols-3 gap-4 text-sm">
                                 <div><dt class="text-[11px] font-bold uppercase muted">Nom</dt><dd class="font-bold">{{ $configuration->name }}</dd></div>
                                 <div><dt class="text-[11px] font-bold uppercase muted">Voiles</dt><dd class="font-bold">{{ $configuration->sail_count }}</dd></div>
-                                <div><dt class="text-[11px] font-bold uppercase muted">Bwa par bord</dt><dd class="font-bold">{{ $configuration->bwa_count }}</dd></div>
+                                <div><dt class="text-[11px] font-bold uppercase muted">Bwa dressés</dt><dd class="font-bold">{{ $configuration->bwa_count }}</dd></div>
                             </dl>
                             @if ($configuration->is_default)
                                 <p class="text-xs muted mt-3">Configuration par défaut de la yole.</p>
@@ -80,7 +80,7 @@
             @if ($configuration)
                 <section class="card overflow-hidden">
                     <div class="p-5 pb-3 flex items-center justify-between gap-3">
-                        <h3 class="font-bold">Postes ({{ $configuration->positions->count() }})</h3>
+                        <h3 class="font-bold">Postes ({{ $configuration->crewSeatCount() }} + {{ \App\Services\BoatLayoutGenerator::MAX_FONDS }} places de fond au choix)</h3>
                         <span class="text-xs muted">Générés automatiquement</span>
                     </div>
                     <div class="overflow-x-auto">
@@ -93,7 +93,7 @@
                                     <tr>
                                         <td class="td font-semibold">{{ $position->label }}</td>
                                         <td class="td"><x-role-pill :role="$position->crewRole" /></td>
-                                        <td class="td text-sm">{{ $sides[$position->side->value] }}</td>
+                                        <td class="td text-sm">{{ $position->bwa_index !== null ? 'Au vent' : $sides[$position->side->value] }}</td>
                                         <td class="td text-sm">{{ $position->bwa_index ?? '—' }}</td>
                                         <td class="td">
                                             @if ($position->is_optional)
