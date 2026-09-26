@@ -36,12 +36,16 @@ export function formToObject(form, submitter) {
 export function mountOfflineForms(root = document) {
     root.addEventListener('submit', async (event) => {
         const form = event.target.closest('form[data-offline-form]');
-        if (!form || navigator.onLine) return;
+        // [data-offline-always]: forms of an outing still on the device, which the server does not know yet.
+        if (!form || (navigator.onLine && !form.hasAttribute('data-offline-always'))) return;
         event.preventDefault();
+        // Double tap: the second submit is stopped by submit-once.js (capture phase).
+        form.dataset.submitting = '1';
 
         const fields = formToObject(form, event.submitter);
         const method = (fields._method || form.method || 'POST').toUpperCase();
-        const id = uuid();
+        // Creation forms: the uuid generated on the page identifies the record (the same key twice = one record).
+        const id = form.querySelector('input[data-fresh-uuid]')?.value || uuid();
         if (form.hasAttribute('data-offline-uuid')) fields.uuid = id;
         await enqueue({
             key: `form:${id}`,

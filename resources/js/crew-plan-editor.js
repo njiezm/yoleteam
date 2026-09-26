@@ -402,7 +402,11 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
     // A version edited offline on this device takes precedence over the (possibly cached) page data.
     pending().then((operations) => {
         const queued = operations.find((op) => op.key === queueKey);
-        if (!queued) return;
+        if (!queued) {
+            // New plan pre-filled offline (next race = crew of the previous one): kept even if closed unchanged.
+            if (!data.plan.update_url && Object.keys(S.assignments).length) { S.dirty = true; saveNow(); }
+            return;
+        }
         const state = queued.payload;
         const configuration = configurations.find((c) => c.id === state.boat_configuration_id);
         if (!configuration) return;

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\CrewPlanStatus;
+use App\Enums\OutingType;
 use App\Enums\SyncAction;
 use App\Enums\SyncStatus;
 use App\Http\Requests\UpdateCrewPlanRequest;
@@ -38,7 +39,7 @@ class OfflineSync
      * authorization and tenant scoping as online).
      */
     public const REPLAYABLE_ROUTES = [
-        'outings.store', 'outings.update', 'outings.results.update',
+        'outings.store', 'outings.update', 'outings.results.update', 'outings.navigation.update', 'outings.complete', 'outings.reopen',
         'members.store', 'members.update',
         'races.stages.store', 'races.stages.results.update',
     ];
@@ -207,7 +208,8 @@ class OfflineSync
         $boat = Boat::query()->forAssociation($user->association_id)->where('is_active', true)->find($create['boat_id'] ?? null)
             ?? throw ValidationException::withMessages(['entity_uuid' => 'Yole introuvable ou indisponible.']);
 
-        $existing = $outing->crewPlans()->where('boat_id', $boat->id)->first();
+        $raceNumber = $outing->type === OutingType::Regate ? max(1, min(20, (int) ($create['race_number'] ?? 1))) : 1;
+        $existing = $outing->crewPlans()->where('boat_id', $boat->id)->where('race_number', $raceNumber)->first();
         if ($existing) {
             return [$existing, $existing->assignments()->doesntExist() && ! $existing->isValidated()];
         }
@@ -217,7 +219,7 @@ class OfflineSync
             ?? $boat->configurations()->firstOrFail();
 
         // A soft-deleted plan still holds the (outing, boat) unique key: bring it back under the new uuid.
-        $plan = CrewPlan::withTrashed()->firstOrNew(['outing_id' => $outing->id, 'boat_id' => $boat->id]);
+        $plan = CrewPlan::withTrashed()->firstOrNew(['outing_id' => $outing->id, 'boat_id' => $boat->id, 'race_number' => $raceNumber]);
         $plan->forceFill([
             'uuid' => $operation->entity_uuid,
             'boat_configuration_id' => $configuration->id,

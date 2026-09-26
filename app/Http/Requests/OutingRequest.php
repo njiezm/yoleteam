@@ -28,8 +28,9 @@ class OutingRequest extends FormRequest
         $creating = $this->route('outing') === null;
 
         return [
-            // Outings created offline keep the uuid generated on the device (appel and plans point to it).
-            'uuid' => [$creating ? 'nullable' : 'exclude', 'uuid', Rule::unique('outings', 'uuid')],
+            // Generated on the device: outings created offline keep it (appel and plans point to it), and a form
+            // sent twice is recognised (OutingController::store opens the outing instead of creating it again).
+            'uuid' => [$creating ? 'nullable' : 'exclude', 'uuid'],
             'type' => ['required', Rule::enum(OutingType::class)],
             'title' => ['required', 'string', 'max:255'],
             'date' => ['required', 'date'],
@@ -37,9 +38,7 @@ class OutingRequest extends FormRequest
             'end_time' => ['nullable', 'date_format:H:i', 'after:start_time'],
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:2000'],
-            'notes_before' => ['nullable', 'string', 'max:5000'],
-            'notes_during' => ['nullable', 'string', 'max:5000'],
-            'notes_after' => ['nullable', 'string', 'max:5000'],
+            'impressions' => ['nullable', 'string', 'max:5000'],
             'distance_nm' => ['nullable', 'numeric', 'between:0,9999.9'],
             'wind_direction' => ['nullable', 'integer', 'between:0,359'],
             'wind_strength' => ['nullable', 'integer', 'between:0,80'],
@@ -63,9 +62,7 @@ class OutingRequest extends FormRequest
         return [
             'boats.*' => 'yole',
             'notes' => 'consignes',
-            'notes_before' => 'impressions avant la sortie',
-            'notes_during' => 'impressions pendant la sortie',
-            'notes_after' => 'impressions après la sortie',
+            'impressions' => 'impressions de navigation',
             'distance_nm' => 'distance parcourue',
             'wind_direction' => 'direction du vent',
             'wind_strength' => 'force du vent',

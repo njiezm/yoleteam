@@ -42,7 +42,7 @@
                     <a href="{{ $plan->isValidated() ? route('crew-plans.show', [$training, $plan]) : route('crew-plans.edit', [$training, $plan]) }}" class="flex items-center gap-3 p-3 -mx-2 rounded-xl hover:bg-slate-50">
                         <span class="w-11 h-11 rounded-xl grid place-items-center text-white" style="background: {{ $plan->boat->color() }}"><x-icon name="boat" /></span>
                         <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2"><p class="font-bold truncate">{{ $plan->boat->name }}</p><x-plan-status :plan="$plan" /></div>
+                            <div class="flex items-center gap-2"><p class="font-bold truncate">{{ $plan->name() }}</p><x-plan-status :plan="$plan" /></div>
                             <p class="text-xs muted">{{ $plan->assignments_count }}/{{ $total }} postes</p>
                         </div>
                         <x-icon name="right" class="w-4 h-4 text-slate-400" />

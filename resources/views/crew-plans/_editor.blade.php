@@ -16,7 +16,7 @@
                 @if ($plan && $outing && $outing->crewPlans->count() > 1)
                     <div class="seg">
                         @foreach ($outing->crewPlans as $other)
-                            <a href="{{ route('crew-plans.edit', [$outing, $other]) }}" @class(['on' => $other->id === $plan->id])><i class="w-2.5 h-2.5 rounded-full" style="background: {{ $other->boat->color() }}"></i>{{ $other->boat->name }}</a>
+                            <a href="{{ route('crew-plans.edit', [$outing, $other]) }}" @class(['on' => $other->id === $plan->id])><i class="w-2.5 h-2.5 rounded-full" style="background: {{ $other->boat->color() }}"></i>{{ $other->hasRaceLabel() ? $other->boat->name.' · M'.$other->race_number : $other->boat->name }}</a>
                         @endforeach
                     </div>
                 @endif

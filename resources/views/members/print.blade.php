@@ -38,7 +38,7 @@
         @if ($members->isEmpty())
             <p class="text-sm text-slate-600">Aucun membre ne correspond aux filtres.</p>
         @else
-            <table class="print-table">
+            <div class="relative overflow-x-auto print:overflow-visible"><table class="print-table">
                 <thead>
                     <tr>
                         <th>Membre</th>
@@ -72,7 +72,7 @@
                         </tr>
                     @endforeach
                 </tbody>
-            </table>
+            </table></div>
         @endif
 
         <p class="mt-6 text-[10px] text-slate-400">YoleTeam · {{ $association->name }}</p>

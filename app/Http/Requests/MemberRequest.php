@@ -4,9 +4,11 @@ namespace App\Http\Requests;
 
 use App\Enums\Gender;
 use App\Enums\MemberLevel;
+use App\Models\Member;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class MemberRequest extends FormRequest
 {
@@ -23,12 +25,45 @@ class MemberRequest extends FormRequest
         $this->merge(['is_active' => $this->boolean('is_active')]);
     }
 
+    private function creating(): bool
+    {
+        return $this->route('member') === null;
+    }
+
+    /**
+     * A member with the same first and last name is most likely a duplicate: it is refused unless the form
+     * says it is another person (homonym).
+     */
+    public function after(): array
+    {
+        return [function (Validator $validator) {
+            if ($validator->errors()->hasAny(['first_name', 'last_name']) || $this->boolean('homonym')) {
+                return;
+            }
+
+            $twin = Member::query()
+                ->forAssociation($this->user()->association_id)
+                ->whereRaw('lower(first_name) = ?', [mb_strtolower(trim((string) $this->input('first_name')))])
+                ->whereRaw('lower(last_name) = ?', [mb_strtolower(trim((string) $this->input('last_name')))])
+                ->when(! $this->creating(), fn ($query) => $query->whereKeyNot($this->route('member')->getKey()))
+                ->when($this->creating() && filled($this->input('uuid')), fn ($query) => $query->where('uuid', '!=', $this->input('uuid')))
+                ->first();
+
+            if ($twin) {
+                $validator->errors()->add('first_name', "{$twin->full_name} existe déjà dans les membres. S’il s’agit d’une autre personne, cochez « Homonyme » puis enregistrez.");
+                $validator->errors()->add('homonym', 'duplicate');
+            }
+        }];
+    }
+
     /**
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
+            'uuid' => [$this->creating() ? 'nullable' : 'exclude', 'uuid'],
+            'homonym' => ['exclude'],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'nickname' => ['nullable', 'string', 'max:50'],
@@ -39,7 +74,7 @@ class MemberRequest extends FormRequest
             'weight_kg' => ['nullable', 'numeric', 'between:30,150'],
             'height_cm' => ['nullable', 'integer', 'between:100,220'],
             'level' => ['required', Rule::enum(MemberLevel::class)],
-            'yole_since_year' => ['nullable', 'integer', 'min:1950', 'max:'.now()->year],
+            'yole_years' => ['nullable', 'integer', 'min:0', 'max:80'],
             'roles' => ['nullable', 'array'],
             'roles.*' => ['integer', 'distinct', Rule::exists('crew_roles', 'id')],
             'preferred' => ['nullable', 'array'],
@@ -60,18 +95,24 @@ class MemberRequest extends FormRequest
             'preferred' => 'postes préférés',
             'preferred.*' => 'poste préféré',
             'is_active' => 'membre actif',
-            'yole_since_year' => 'année de début de la yole',
+            'yole_years' => 'nombre d’années de yole',
         ];
     }
 
     /**
-     * Member columns (everything except the crew roles).
+     * Member columns (everything except the crew roles). The number of years typed is stored as a starting
+     * year, so that it keeps growing by itself every year.
      *
      * @return array<string, mixed>
      */
     public function memberAttributes(): array
     {
-        return $this->safe()->except(['roles', 'preferred']);
+        $years = $this->validated('yole_years');
+
+        return [
+            ...$this->safe()->except(['roles', 'preferred', 'yole_years']),
+            'yole_since_year' => $years === null ? null : today()->year - (int) $years,
+        ];
     }
 
     /**

@@ -9,6 +9,8 @@
 
     <form id="outing-form" method="POST" action="{{ route('outings.store') }}" class="max-w-3xl space-y-5" data-offline-form="Nouvelle sortie" data-offline-uuid data-offline-redirect="{{ route('outings.offline') }}?uuid={uuid}">
         @csrf
+        {{-- Filled on the device: sending the form twice creates the outing once. --}}
+        <input type="hidden" name="uuid" value="" data-fresh-uuid>
         @include('outings._form')
 
         <section class="card p-5 lg:p-6">

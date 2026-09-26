@@ -10,6 +10,9 @@
     @csrf
     @if ($method !== 'POST')
         @method($method)
+    @else
+        {{-- Filled on the device: sending the form twice creates the member once. --}}
+        <input type="hidden" name="uuid" value="" data-fresh-uuid>
     @endif
 
     @if ($errors->any())
@@ -21,6 +24,12 @@
         <div class="grid sm:grid-cols-2 gap-4">
             <x-field label="Prénom *" name="first_name"><x-input name="first_name" :value="$member->first_name" required maxlength="100" autocomplete="off" /></x-field>
             <x-field label="Nom *" name="last_name"><x-input name="last_name" :value="$member->last_name" required maxlength="100" autocomplete="off" /></x-field>
+            @if ($errors->has('homonym') || old('homonym'))
+                <label class="sm:col-span-2 flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm font-semibold text-amber-900 cursor-pointer">
+                    <input type="checkbox" name="homonym" value="1" class="w-4 h-4 accent-amber-600" @checked(old('homonym'))>
+                    Homonyme : c’est une autre personne, l’enregistrer quand même
+                </label>
+            @endif
             <x-field label="Surnom" name="nickname"><x-input name="nickname" :value="$member->nickname" maxlength="50" /></x-field>
             <x-field label="Date de naissance" name="birth_date">
                 <div class="flex items-center gap-3">
@@ -73,8 +82,8 @@
                     <p class="text-xs text-red-600 font-semibold mt-1.5">{{ $message }}</p>
                 @enderror
             </div>
-            <x-field label="Pratique la yole depuis (année)" name="yole_since_year" hint="Laisser vide si inconnu.">
-                <x-input name="yole_since_year" type="number" :value="$member->yole_since_year" min="1950" max="{{ today()->year }}" step="1" inputmode="numeric" placeholder="{{ today()->year - 5 }}" />
+            <x-field label="Années de yole" name="yole_years" hint="0 pour une première année · laisser vide si inconnu. Le nombre augmente tout seul chaque année.">
+                <x-input name="yole_years" type="number" :value="$member->yoleYears()" min="0" max="80" step="1" inputmode="numeric" placeholder="5" />
             </x-field>
         </div>
 

@@ -71,7 +71,9 @@ class CrewPlanTest extends TestCase
         $this->assertTrue($plan->configuration->is_default);
         $this->assertSame(CrewPlanStatus::Brouillon, $plan->status);
 
-        $this->post(route('crew-plans.store', $this->outing), ['boat_id' => $this->boat->id])->assertSessionHasErrors('boat_id');
+        // Engaging the same boat again (double tap) opens the existing plan.
+        $this->post(route('crew-plans.store', $this->outing), ['boat_id' => $this->boat->id])->assertRedirect(route('crew-plans.edit', [$this->outing, $plan]));
+        $this->assertSame(1, CrewPlan::count());
     }
 
     public function test_editor_and_plan_pages_render(): void

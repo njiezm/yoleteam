@@ -4,13 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Enums\CrewPlanStatus;
 use App\Enums\OutingStatus;
+use App\Enums\OutingType;
+use App\Enums\RaceOutcome;
 use App\Http\Requests\OutingRequest;
 use App\Models\Boat;
+use App\Models\CrewPlan;
 use App\Models\Member;
 use App\Models\Outing;
 use App\Services\AttendanceStats;
 use App\Services\CrewPlanEditorData;
 use App\Services\CrewPlanPresenter;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -56,7 +60,30 @@ class OutingController extends Controller
     {
         $data = $request->validated();
 
-        $outing = DB::transaction(function () use ($request, $data) {
+        // Same form sent twice (double tap, offline replay after a lost response): one outing only.
+        if (filled($data['uuid'] ?? null) && ($existing = Outing::withTrashed()->where('uuid', $data['uuid'])->first())) {
+            abort_unless($existing->association_id === $request->user()->association_id && ! $existing->trashed(), 422, 'Identifiant de sortie déjà utilisé.');
+
+            return redirect()->route('outings.show', $existing)->with('status', 'Sortie déjà enregistrée');
+        }
+
+        try {
+            $outing = $this->createOuting($request, $data);
+        } catch (UniqueConstraintViolationException $exception) {
+            // Both requests of a double tap arrived together: the other one created the outing.
+            $outing = filled($data['uuid'] ?? null) ? Outing::query()->forAssociation($request->user()->association_id)->where('uuid', $data['uuid'])->first() : null;
+            throw_unless($outing, $exception);
+        }
+
+        return redirect()->route('outings.show', $outing)->with('status', 'Sortie créée');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function createOuting(OutingRequest $request, array $data): Outing
+    {
+        return DB::transaction(function () use ($request, $data) {
             $outing = Outing::create([
                 ...collect($data)->except(['boats', 'configurations'])->all(),
                 'association_id' => $request->user()->association_id,
@@ -84,8 +111,6 @@ class OutingController extends Controller
 
             return $outing;
         });
-
-        return redirect()->route('outings.show', $outing)->with('status', 'Sortie créée');
     }
 
     public function show(Request $request, Outing $outing, AttendanceStats $stats, CrewPlanPresenter $presenter, CrewPlanEditorData $editorData): View
@@ -104,14 +129,30 @@ class OutingController extends Controller
             ->with('configurations.positions.crewRole')
             ->orderBy('name')
             ->get();
+        $attendances = $outing->attendances()->get()->keyBy('member_id');
+
+        // Championship day: each engaged boat can get the crew of its next race, starting from the last one.
+        $nextRaces = $outing->type === OutingType::Regate
+            ? $outing->crewPlans->groupBy('boat_id')->map(fn ($plans) => $plans->sortBy('race_number')->last())
+                ->filter(fn (CrewPlan $last) => $last->race_number < RaceOutcome::MAX_PLACE && $last->boat->is_active)
+                ->values()
+            : collect();
+
+        // Editor data for each plan that can still be created: lets the patron compose it offline.
+        $planTemplates = $availableBoats->mapWithKeys(fn (Boat $boat) => [$boat->id => $editorData->build($outing, $boat, null, $associationId)])
+            ->union($nextRaces->mapWithKeys(fn (CrewPlan $last) => [
+                $last->boat_id.':'.($last->race_number + 1) => $editorData->build($outing, $last->boat, null, $associationId, $last->race_number + 1, $last),
+            ]));
 
         return view('outings.show', [
             'outing' => $outing,
             'counts' => $stats->forOuting($outing),
             'activeMembers' => Member::query()->forAssociation($associationId)->active()->count(),
+            'members' => $outing->appelMembers($attendances->keys()->all()),
+            'attendances' => $attendances,
             'availableBoats' => $availableBoats,
-            // Editor data for each boat that can still be engaged: lets the patron create a plan offline.
-            'planTemplates' => $availableBoats->mapWithKeys(fn (Boat $boat) => [$boat->id => $editorData->build($outing, $boat, null, $associationId)]),
+            'nextRaces' => $nextRaces,
+            'planTemplates' => $planTemplates,
             'windOptions' => CrewPlanPresenter::windOptions(),
             'presenter' => $presenter,
         ]);

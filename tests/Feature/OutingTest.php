@@ -161,17 +161,18 @@ class OutingTest extends TestCase
 
         $this->get(route('outings.show', $outing))
             ->assertOk()
-            ->assertSee('Notes & navigation')
-            ->assertSee('L’heure de fin et la distance peuvent être saisies après la sortie');
+            ->assertSee('3. Impressions de navigation')
+            ->assertSee('Distance parcourue (milles)');
         $this->get(route('outings.edit', $outing))
             ->assertOk()
-            ->assertSee(['Impressions avant la sortie', 'Distance parcourue (milles)'])
+            ->assertSee(['Impressions de navigation', 'Distance parcourue (milles)'])
+            ->assertDontSee('Impressions avant la sortie')
             ->assertDontSee('Rattacher à une étape de régate');
 
         $this->put(route('outings.update', $outing), [
             'type' => 'entrainement', 'title' => 'Tour de la baie', 'date' => today()->toDateString(), 'status' => 'terminee',
             'start_time' => '06:00', 'end_time' => '08:30', 'distance_nm' => '12.5', 'notes' => 'Travail des virements',
-            'notes_before' => 'Mer formée annoncée', 'notes_during' => 'Belle glisse au largue', 'notes_after' => 'Virements à reprendre',
+            'impressions' => 'Belle glisse au largue, virements à reprendre',
         ])->assertRedirect(route('outings.show', $outing));
 
         $outing->refresh();
@@ -180,8 +181,7 @@ class OutingTest extends TestCase
 
         $this->get(route('outings.show', $outing))
             ->assertOk()
-            ->assertSee(['2 h 30', '12,5 milles', '5,0 nœuds', 'Travail des virements', 'Mer formée annoncée', 'Belle glisse au largue', 'Virements à reprendre'])
-            ->assertDontSee('L’heure de fin et la distance peuvent être saisies après la sortie');
+            ->assertSee(['2 h 30', '12,5 milles', '5,0 nœuds', 'Travail des virements', 'Belle glisse au largue, virements à reprendre']);
 
         $this->put(route('outings.update', $outing), [
             'type' => 'entrainement', 'title' => 'Tour de la baie', 'date' => today()->toDateString(), 'status' => 'terminee', 'distance_nm' => '-3',
@@ -231,7 +231,9 @@ class OutingTest extends TestCase
 
         $this->get(route('outings.by-uuid', $uuid))->assertRedirect(route('outings.show', $outing));
         $this->get(route('outings.by-uuid', (string) Str::uuid()))->assertNotFound();
+        // Replayed / sent twice: the outing is not created again.
         $this->post(route('outings.store'), ['uuid' => $uuid, 'type' => 'entrainement', 'title' => 'Doublon', 'date' => today()->toDateString()])
-            ->assertSessionHasErrors('uuid');
+            ->assertRedirect(route('outings.show', $outing));
+        $this->assertSame(1, Outing::count());
     }
 }

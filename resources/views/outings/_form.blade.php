@@ -77,14 +77,12 @@
 </section>
 
 <section class="card p-5 lg:p-6">
-    <h3 class="font-bold mb-1 flex items-center gap-2"><x-icon name="edit" class="w-4 h-4" />Impressions & navigation</h3>
+    <h3 class="font-bold mb-1 flex items-center gap-2"><x-icon name="edit" class="w-4 h-4" />Impressions de navigation</h3>
     <p class="text-xs muted mb-4">Facultatif — l’heure de fin et la distance peuvent être saisies au retour : la durée et la vitesse moyenne sont alors calculées.</p>
     <div class="grid sm:grid-cols-3 gap-4">
-        @foreach (['notes_before' => ['Impressions avant la sortie', 'Forme de l’équipage, météo annoncée…'], 'notes_during' => ['Pendant', 'Manœuvres, incidents, sensations…'], 'notes_after' => ['Après', 'Bilan, points à retravailler…']] as $field => [$label, $placeholder])
-            <x-field :label="$label" :name="$field">
-                <textarea id="{{ $field }}" name="{{ $field }}" rows="4" maxlength="5000" @class(['input', 'input-error' => $errors->has($field)]) placeholder="{{ $placeholder }}">{{ old($field, $outing->{$field}) }}</textarea>
-            </x-field>
-        @endforeach
+        <x-field label="Impressions" name="impressions" class="sm:col-span-2">
+            <textarea id="impressions" name="impressions" rows="4" maxlength="5000" @class(['input', 'input-error' => $errors->has('impressions')]) placeholder="Forme de l’équipage, manœuvres, sensations, points à retravailler…">{{ old('impressions', $outing->impressions) }}</textarea>
+        </x-field>
         <x-field label="Distance parcourue (milles)" name="distance_nm">
             <x-input name="distance_nm" type="number" min="0" max="9999.9" step="0.1" inputmode="decimal" :value="$outing->distance_nm !== null ? (float) $outing->distance_nm : null" placeholder="8,5" />
         </x-field>

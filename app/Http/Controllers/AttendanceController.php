@@ -34,7 +34,7 @@ class AttendanceController extends Controller
 
         return view('attendance.edit', [
             'outing' => $outing,
-            'members' => $this->members($outing, $attendances->keys()->all()),
+            'members' => $outing->appelMembers($attendances->keys()->all()),
             'attendances' => $attendances,
             'counts' => $stats->forOuting($outing),
         ]);
@@ -76,14 +76,4 @@ class AttendanceController extends Controller
      * @param  list<int>  $recordedIds
      * @return Collection<int, Member>
      */
-    private function members(Outing $outing, array $recordedIds): Collection
-    {
-        return Member::query()
-            ->forAssociation($outing->association_id)
-            ->where(fn ($query) => $query->where('is_active', true)->orWhereIn('id', $recordedIds))
-            ->with('crewRoles')
-            ->orderBy('first_name')
-            ->orderBy('last_name')
-            ->get();
-    }
 }

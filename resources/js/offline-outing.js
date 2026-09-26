@@ -14,16 +14,17 @@ export function mountOfflineOuting(root, context = {}) {
     const templates = JSON.parse(document.querySelector('[data-plan-templates]')?.textContent || '{}');
     const editorMembers = JSON.parse(document.querySelector('[data-editor-members]')?.textContent || '[]');
     const outingUuid = root.dataset.outingUuid;
-    const form = document.querySelector('[data-plan-create]');
+    const form = root.querySelector('[data-plan-create]:not([data-template])');
     const host = document.querySelector('[data-offline-editor-host]');
     const template = document.querySelector('[data-offline-editor]');
 
-    const open = async (boatId, planUuid) => {
-        if (!templates[boatId] || !host || !template) {
+    /** @param {string} key boat id, or "boatId:race" for the next race of a championship day */
+    const open = async (key, planUuid) => {
+        if (!templates[key] || !host || !template) {
             toast('Cette yole ne peut pas être préparée hors ligne : rouvrez la sortie avec du réseau.', 'error');
             return;
         }
-        const data = structuredClone(templates[boatId]);
+        const data = structuredClone(templates[key]);
         data.plan.uuid = planUuid;
         data.plan.create = { ...data.plan.create, outing_uuid: outingUuid };
         if (context.title) data.plan.label = `${data.plan.label.split(' · ')[0]} · ${context.title}`;
@@ -53,10 +54,13 @@ export function mountOfflineOuting(root, context = {}) {
         window.scrollTo(0, 0);
     };
 
-    form?.addEventListener('submit', (event) => {
-        if (navigator.onLine) return;
+    // Offline, "Créer le plan" / "Préparer la manche N" open the editor here instead of calling the server.
+    root.addEventListener('submit', (event) => {
+        const planForm = event.target.closest('[data-plan-create]');
+        if (!planForm || navigator.onLine) return;
         event.preventDefault();
-        open(form.querySelector('[name="boat_id"]').value, uuid());
+        event.stopPropagation();
+        open(planForm.dataset.template || planForm.querySelector('[name="boat_id"]').value, uuid());
     });
 
     root.addEventListener('click', (event) => {
@@ -64,10 +68,16 @@ export function mountOfflineOuting(root, context = {}) {
         if (button) open(button.dataset.boat, button.dataset.offlinePlan);
     });
 
+    const keyOf = (create) => ((create.race_number ?? 1) > 1 ? `${create.boat_id}:${create.race_number}` : String(create.boat_id));
+
     // Plans created offline for this outing that are still waiting for the network.
     pending().then((operations) => {
         const mine = operations.filter((op) => op.entity === 'crew_plan' && op.payload?.create?.outing_uuid === outingUuid);
-        const started = new Set(mine.map((op) => String(op.payload.create.boat_id)));
+        const started = new Set(mine.map((op) => keyOf(op.payload.create)));
+        // "Préparer la manche N" already started on this device: the plan is listed below instead.
+        root.querySelectorAll('[data-plan-create][data-template]').forEach((planForm) => {
+            if (started.has(planForm.dataset.template)) planForm.classList.add('hidden');
+        });
         // Boats ticked when the outing was created offline, not composed yet.
         const engaged = (context.engagedBoats ?? []).map(String).filter((id) => templates[id] && !started.has(id));
         if (!mine.length && !engaged.length) return;
@@ -78,13 +88,15 @@ export function mountOfflineOuting(root, context = {}) {
                 <button type="button" class="btn-primary btn-sm" data-offline-plan="${e(uuid())}" data-boat="${e(boatId)}">Composer l’équipage</button>
               </div>`).join('') + mine.map((op) => {
             const boatId = op.payload.create.boat_id;
-            const name = templates[boatId]?.plan.label.split(' · ')[0] ?? 'Yole';
-            form?.querySelector(`[name="boat_id"] option[value="${boatId}"]`)?.remove();
+            const key = keyOf(op.payload.create);
+            const race = (op.payload.create.race_number ?? 1) > 1 ? ` · manche ${op.payload.create.race_number}` : '';
+            const name = (templates[key] ?? templates[boatId])?.plan.label.split(' · ')[0] ?? 'Yole';
+            if (!race) form?.querySelector(`[name="boat_id"] option[value="${boatId}"]`)?.remove();
             return `<div class="card p-4 flex flex-wrap items-center gap-3 bg-amber-50 border-amber-200">
                 <span class="w-10 h-10 rounded-xl bg-amber-400 text-navy-950 grid place-items-center font-extrabold">${op.payload.assignments.length}</span>
-                <div class="flex-1 min-w-0"><p class="font-bold">${e(name)} · plan créé hors ligne</p>
+                <div class="flex-1 min-w-0"><p class="font-bold">${e(name)}${e(race)} · plan créé hors ligne</p>
                   <p class="text-xs text-amber-800">${op.payload.assignments.length} poste(s) pourvu(s)${op.payload.validate ? ' · validation demandée' : ''} — envoyé au retour du réseau</p></div>
-                <button type="button" class="btn-primary btn-sm" data-offline-plan="${e(op.entity_uuid)}" data-boat="${e(boatId)}">Continuer</button>
+                <button type="button" class="btn-primary btn-sm" data-offline-plan="${e(op.entity_uuid)}" data-boat="${e(templates[key] ? key : boatId)}">Continuer</button>
               </div>`;
         }).join('');
         if (form && !form.querySelector('[name="boat_id"] option')) form.classList.add('hidden');

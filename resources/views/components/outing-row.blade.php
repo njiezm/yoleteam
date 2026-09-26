@@ -18,7 +18,7 @@
                 <span class="inline-flex items-center gap-1"><x-icon name="pin" class="w-3.5 h-3.5" />{{ $outing->location }}</span>
             @endif
             @if ($outing->relationLoaded('crewPlans') && $outing->crewPlans->isNotEmpty())
-                <span class="inline-flex items-center gap-1"><x-icon name="boat" class="w-3.5 h-3.5" />{{ $outing->crewPlans->map(fn ($plan) => $plan->boat->name)->join(', ') }}</span>
+                <span class="inline-flex items-center gap-1"><x-icon name="boat" class="w-3.5 h-3.5" />{{ $outing->crewPlans->map(fn ($plan) => $plan->boat->name)->unique()->join(', ') }}</span>
             @endif
         </p>
     </div>

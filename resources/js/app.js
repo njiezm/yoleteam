@@ -4,6 +4,7 @@ import { mountCrewPlanEditor } from './crew-plan-editor';
 import { mountSync } from './sync';
 import { mountMemberForm } from './member-form';
 import { mountPasswordToggles } from './password-toggle';
+import { mountSubmitOnce } from './submit-once';
 import { mountOfflineForms } from './offline-forms';
 import { mountOfflineOuting } from './offline-outing';
 import { mountOfflineOutingList, mountOfflineOutingPage, mountOfflineOutingPickers, mountOfflineShortcuts } from './offline-outing-page';
@@ -11,6 +12,7 @@ import { mountOfflineOutingList, mountOfflineOutingPage, mountOfflineOutingPicke
 document.addEventListener('DOMContentLoaded', () => {
     mountDrawings();
     mountSync();
+    mountSubmitOnce();
     mountOfflineForms();
     mountOfflineShortcuts();
     mountOfflineOutingPickers();

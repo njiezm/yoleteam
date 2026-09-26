@@ -12,6 +12,7 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\OutingCalendarController;
 use App\Http\Controllers\OutingController;
+use App\Http\Controllers\OutingNavigationController;
 use App\Http\Controllers\OutingResultController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
@@ -49,6 +50,9 @@ Route::middleware('auth')->group(function () {
     // Sorties, appel et plans d'équipage (admin + patrons).
     Route::get('/sorties/hors-ligne', [OutingController::class, 'offline'])->name('outings.offline');
     Route::get('/sorties/par-identifiant/{uuid}', [OutingController::class, 'byUuid'])->whereUuid('uuid')->name('outings.by-uuid');
+    Route::put('/sorties/par-identifiant/{uuid}/navigation', [OutingNavigationController::class, 'update'])->whereUuid('uuid')->name('outings.navigation.update');
+    Route::post('/sorties/par-identifiant/{uuid}/validation', [OutingNavigationController::class, 'complete'])->whereUuid('uuid')->name('outings.complete');
+    Route::delete('/sorties/par-identifiant/{uuid}/validation', [OutingNavigationController::class, 'reopen'])->whereUuid('uuid')->name('outings.reopen');
     Route::get('/sorties/calendrier', OutingCalendarController::class)->name('outings.calendar');
     Route::resource('sorties', OutingController::class)
         ->parameters(['sorties' => 'outing'])

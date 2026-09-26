@@ -37,7 +37,7 @@
         <button type="button" onclick="window.print()" class="btn-primary btn-sm ml-auto"><x-icon name="printer" class="w-4 h-4" />Imprimer / Enregistrer en PDF</button>
     </nav>
 
-    <header class="flex items-end justify-between gap-4 border-b-2 border-navy-900 pb-3 mb-4">
+    <header class="flex flex-wrap items-end justify-between gap-4 border-b-2 border-navy-900 pb-3 mb-4">
         <div>
             <p class="text-xs font-bold uppercase tracking-wider text-slate-500">{{ $associationName }}</p>
             <h1 class="text-2xl font-extrabold tracking-tight">Calendrier des sorties · {{ $title }}</h1>
@@ -52,7 +52,7 @@
     @if ($view === 'semaine')
         <div class="grid grid-cols-7 gap-2">
             @for ($day = $start; $day->lte($end); $day = $day->addDay())
-                <section class="bg-white rounded-lg border border-slate-200 min-h-64 p-2 print-avoid-break">
+                <section class="bg-white rounded-lg border border-slate-200 min-h-64 p-2 min-w-0 break-words print-avoid-break">
                     <p @class(['text-xs font-bold uppercase', 'text-sun-600' => $day->isToday(), 'text-slate-500' => ! $day->isToday()])>{{ $weekDays[$day->dayOfWeekIso - 1] }}</p>
                     <p class="text-lg font-extrabold leading-tight mb-2">{{ $day->translatedFormat('j M') }}</p>
                     <div class="space-y-1.5">
@@ -74,7 +74,7 @@
                 <p class="text-center text-[11px] font-bold uppercase text-slate-500 py-1">{{ $dayName }}</p>
             @endforeach
             @for ($day = $start->startOfWeek(); $day->lte($end->endOfWeek()); $day = $day->addDay())
-                <section @class(['rounded-md border min-h-24 p-1.5 print-avoid-break', 'bg-white border-slate-200' => $day->month === $start->month, 'bg-slate-50 border-slate-100 text-slate-400' => $day->month !== $start->month])>
+                <section @class(['rounded-md border min-h-24 p-1.5 min-w-0 break-words print-avoid-break', 'bg-white border-slate-200' => $day->month === $start->month, 'bg-slate-50 border-slate-100 text-slate-400' => $day->month !== $start->month])>
                     <p class="text-xs font-extrabold">{{ $day->day }}</p>
                     @if ($day->month === $start->month)
                         <div class="space-y-1 mt-1">
@@ -90,10 +90,10 @@
             @endfor
         </div>
     @else
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 print:grid-cols-3 gap-3">
             @for ($month = $start; $month->lte($end); $month = $month->addMonthNoOverflow())
                 @php($monthOutings = $outingsByMonth->get($month->month, collect()))
-                <section class="bg-white rounded-lg border border-slate-200 p-2.5 print-avoid-break">
+                <section class="bg-white rounded-lg border border-slate-200 p-2.5 min-w-0 break-words print-avoid-break">
                     <h2 class="font-extrabold text-sm border-b border-slate-200 pb-1 mb-1.5">{{ ucfirst($month->translatedFormat('F')) }} <span class="text-slate-400 font-semibold">· {{ $monthOutings->count() }}</span></h2>
                     @forelse ($monthOutings as $outing)
                         <div class="border-l-4 rounded px-1.5 py-0.5 mb-1 text-[10px] leading-tight {{ $typeClass($outing) }}">

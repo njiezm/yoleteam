@@ -12,6 +12,7 @@ use Database\Factories\OutingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'association_id', 'uuid', 'type', 'title', 'date', 'start_time', 'end_time', 'location',
     'wind_direction', 'wind_strength', 'wind_gusts', 'sea_state', 'swell_m', 'weather',
-    'status', 'race_stage_id', 'notes', 'notes_before', 'notes_during', 'notes_after', 'distance_nm',
+    'status', 'race_stage_id', 'notes', 'impressions', 'distance_nm',
     'day_rank', 'stage_rank', 'general_rank', 'created_by',
 ])]
 class Outing extends Model
@@ -164,9 +165,26 @@ class Outing extends Model
     }
 
     /** @return HasMany<CrewPlan, $this> */
+    /**
+     * Members listed on the appel: active ones, plus those already recorded (even if inactive since).
+     *
+     * @param  list<int>  $recordedIds
+     * @return Collection<int, Member>
+     */
+    public function appelMembers(array $recordedIds): Collection
+    {
+        return Member::query()
+            ->forAssociation($this->association_id)
+            ->where(fn ($query) => $query->where('is_active', true)->orWhereIn('id', $recordedIds))
+            ->with('crewRoles')
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get();
+    }
+
     public function crewPlans(): HasMany
     {
-        return $this->hasMany(CrewPlan::class);
+        return $this->hasMany(CrewPlan::class)->chaperone()->orderBy('race_number')->orderBy('id');
     }
 
     /** @return HasMany<OutingRace, $this> */

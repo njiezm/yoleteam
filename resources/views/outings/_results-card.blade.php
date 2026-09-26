@@ -9,8 +9,8 @@
     $blankIndex++;
     $combi = $outing->combiPoints();
 @endphp
-<section class="card p-5 mt-5 scroll-mt-24" id="resultats">
-    <x-section-title title="Résultats">
+<section class="card p-5 mt-8 scroll-mt-24" id="resultats">
+    <x-section-title :title="(isset($number) ? $number.'. ' : '').'Résultats'">
         <span class="chip bg-sun-100 text-amber-800"><x-icon name="trophy" class="w-3.5 h-3.5" />{{ $outing->type->label() }}</span>
     </x-section-title>
 
@@ -22,7 +22,7 @@
 
         @if ($isRace)
             <p class="text-xs muted mb-3">Classé : points = place · Coulé (C) et avarie (A) : {{ \App\Enums\RaceOutcome::PENALTY_POINTS }} points · Disqualifié (D) : points à saisir. Le combi additionne les points des courses de la journée (le plus bas l’emporte).</p>
-            <div class="overflow-x-auto -mx-5">
+            <div class="relative overflow-x-auto -mx-5">
                 <table class="w-full min-w-[560px]">
                     <thead class="bg-slate-50">
                         <tr><th class="th w-12">N°</th><th class="th w-28">Place</th><th class="th">Résultat</th><th class="th w-28">Points</th><th class="th w-16 text-right"><span class="sr-only">Retirer</span></th></tr>

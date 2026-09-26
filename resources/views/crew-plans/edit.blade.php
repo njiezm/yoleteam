@@ -1,4 +1,4 @@
-<x-layouts.app title="Plan d’équipage" :crumb="ucfirst($outing->date->translatedFormat('D j M')).' · '.$outing->title.' · '.$plan->boat->name" :back="route('outings.show', $outing)">
+<x-layouts.app title="Plan d’équipage" :crumb="ucfirst($outing->date->translatedFormat('D j M')).' · '.$outing->title.' · '.$plan->name()" :back="route('outings.show', $outing)">
     <x-slot:actions>
         <button type="button" data-action="reset" class="btn-ghost btn-sm"><x-icon name="refresh" class="w-4 h-4" />Vider</button>
         <a href="{{ route('crew-plans.show', [$outing, $plan]) }}" class="btn-ghost btn-sm"><x-icon name="printer" class="w-4 h-4" />Aperçu</a>

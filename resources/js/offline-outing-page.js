@@ -35,6 +35,25 @@ export async function mountOfflineOutingPage(root) {
     attendance.dataset.outingLabel = `${f.title} · ${date}`;
     mountAttendance(attendance);
 
+    // Navigation impressions and "Valider la sortie" are queued like any offline form, addressed by uuid.
+    const here = `${location.pathname}${location.search}`;
+    const navigation = root.querySelector('[data-navigation-form]');
+    if (navigation) {
+        navigation.setAttribute('data-offline-always', '');
+        navigation.action = `/sorties/par-identifiant/${uuid}/navigation`;
+        navigation.dataset.offlineForm = `Impressions de navigation : ${f.title || 'Sortie'}`;
+        navigation.dataset.offlineRedirect = here;
+        navigation.querySelector('[name="redirect_to"]').value = '';
+        if (f.end_time) navigation.querySelector('[name="end_time"]').value = f.end_time;
+    }
+    const complete = root.querySelector('[data-complete-form]');
+    if (complete) {
+        complete.setAttribute('data-offline-always', '');
+        complete.action = `/sorties/par-identifiant/${uuid}/validation`;
+        complete.dataset.offlineForm = `Sortie validée : ${f.title || 'Sortie'}`;
+        complete.dataset.offlineRedirect = here;
+    }
+
     const plans = root.querySelector('[data-outing-plans]');
     plans.dataset.outingUuid = uuid;
     const toNumber = (value) => (value === undefined || value === null || value === '' ? null : +value);

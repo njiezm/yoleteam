@@ -14,6 +14,7 @@ use App\Models\Outing;
 use App\Services\AttendanceStats;
 use App\Support\XlsxWriter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -191,15 +192,29 @@ class MemberController extends Controller
 
     public function store(MemberRequest $request): RedirectResponse
     {
-        $member = DB::transaction(function () use ($request): Member {
-            $member = Member::create([
-                ...$request->memberAttributes(),
-                'association_id' => $request->user()->association_id,
-            ]);
-            $member->crewRoles()->sync($request->crewRoles());
+        // Same form sent twice (double tap, offline replay after a lost response): one member only.
+        $uuid = $request->validated('uuid');
+        if ($uuid && ($existing = Member::withTrashed()->where('uuid', $uuid)->first())) {
+            abort_unless($existing->association_id === $request->user()->association_id && ! $existing->trashed(), 422, 'Identifiant de membre déjà utilisé.');
 
-            return $member;
-        });
+            return redirect()->route('members.show', $existing)->with('status', 'Membre déjà enregistré');
+        }
+
+        try {
+            $member = DB::transaction(function () use ($request): Member {
+                $member = Member::create([
+                    ...$request->memberAttributes(),
+                    'association_id' => $request->user()->association_id,
+                ]);
+                $member->crewRoles()->sync($request->crewRoles());
+
+                return $member;
+            });
+        } catch (UniqueConstraintViolationException $exception) {
+            // Both requests of a double tap arrived together: the other one created the member.
+            $member = $uuid ? Member::query()->forAssociation($request->user()->association_id)->where('uuid', $uuid)->first() : null;
+            throw_unless($member, $exception);
+        }
 
         return redirect()->route('members.show', $member)->with('status', 'Membre enregistré');
     }

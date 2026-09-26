@@ -327,14 +327,14 @@ class MemberTest extends TestCase
         $this->get(route('members.show', $member))->assertOk()->assertDontSee('de yole');
     }
 
-    public function test_form_has_start_year_and_live_age_hooks_but_no_category(): void
+    public function test_form_has_yole_years_and_live_age_hooks_but_no_category(): void
     {
         $user = $this->signInAdmin();
         $member = $this->member($user, ['birth_date' => now()->subYears(30)->subMonth(), 'yole_since_year' => 2010]);
 
         $this->get(route('members.create'))
             ->assertOk()
-            ->assertSee('Pratique la yole depuis (année)')
+            ->assertSee('Années de yole')
             ->assertSee('data-member-form', false)
             ->assertSee('data-member-birth-date', false)
             ->assertSee('data-member-age', false)
@@ -344,29 +344,29 @@ class MemberTest extends TestCase
 
         $this->get(route('members.edit', $member))
             ->assertOk()
-            ->assertSee('value="2010"', false)
+            ->assertSee('value="'.(today()->year - 2010).'"', false)
             ->assertSee('30 ans');
     }
 
-    public function test_admin_saves_the_yole_start_year_and_category_is_ignored(): void
+    public function test_admin_types_the_number_of_yole_years_and_category_is_ignored(): void
     {
         $this->signInAdmin();
 
-        $this->post(route('members.store'), $this->payload(['yole_since_year' => '2016', 'category' => 'jeune']))->assertSessionHasNoErrors();
+        $this->post(route('members.store'), $this->payload(['yole_years' => '10', 'category' => 'jeune']))->assertSessionHasNoErrors();
 
         $member = Member::sole();
-        $this->assertSame(2016, $member->yole_since_year);
-        $this->assertSame(today()->year - 2016, $member->yoleYears());
+        $this->assertSame(today()->year - 10, $member->yole_since_year);
+        $this->assertSame(10, $member->yoleYears());
         $this->assertDatabaseHas('members', ['id' => $member->id, 'category' => null]);
     }
 
-    public function test_yole_start_year_is_bounded(): void
+    public function test_yole_years_are_bounded(): void
     {
         $this->signInAdmin();
 
-        $this->post(route('members.store'), $this->payload(['yole_since_year' => '1949']))->assertSessionHasErrors('yole_since_year');
-        $this->post(route('members.store'), $this->payload(['yole_since_year' => (string) (today()->year + 1)]))->assertSessionHasErrors('yole_since_year');
-        $this->post(route('members.store'), $this->payload(['yole_since_year' => 'abc']))->assertSessionHasErrors('yole_since_year');
+        $this->post(route('members.store'), $this->payload(['yole_years' => '-1']))->assertSessionHasErrors('yole_years');
+        $this->post(route('members.store'), $this->payload(['yole_years' => '81']))->assertSessionHasErrors('yole_years');
+        $this->post(route('members.store'), $this->payload(['yole_years' => 'abc']))->assertSessionHasErrors('yole_years');
 
         $this->assertSame(0, Member::count());
     }
@@ -487,7 +487,7 @@ class MemberTest extends TestCase
             'weight_kg' => '74.5',
             'height_cm' => '178',
             'level' => 'intermediaire',
-            'yole_since_year' => '2016',
+            'yole_years' => '10',
             'notes' => 'Disponible le mercredi.',
             'is_active' => '1',
             ...$overrides,

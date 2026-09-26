@@ -2,12 +2,12 @@
     <x-slot:actions>
         <a href="{{ route('attendance.stats') }}" class="btn-ghost btn-sm"><x-icon name="chart" class="w-4 h-4" />Statistiques</a>
         <button form="attendance-form" name="all_present" value="1" class="btn-ghost btn-sm" data-all-present><x-icon name="check" class="w-4 h-4" />Tous présents</button>
-        <a href="{{ route('outings.show', $outing) }}" class="btn-primary btn-sm">Équipages <x-icon name="right" class="w-4 h-4" /></a>
+        <a href="{{ route('outings.show', $outing) }}#equipages" class="btn-primary btn-sm">Équipages <x-icon name="right" class="w-4 h-4" /></a>
     </x-slot:actions>
     <x-slot:sticky>
         <div class="flex gap-2">
             <button form="attendance-form" name="all_present" value="1" class="btn-ghost flex-1 h-12" data-all-present><x-icon name="check" class="w-4 h-4" />Tous présents</button>
-            <a href="{{ route('outings.show', $outing) }}" class="btn-sun h-12">Équipages <x-icon name="right" class="w-4 h-4" /></a>
+            <a href="{{ route('outings.show', $outing) }}#equipages" class="btn-sun h-12">Équipages <x-icon name="right" class="w-4 h-4" /></a>
         </div>
     </x-slot:sticky>
 
@@ -23,7 +23,7 @@
                 <span class="w-12 h-12 shrink-0 rounded-2xl bg-navy-900 text-sun-400 grid place-items-center"><x-icon name="calendar" /></span>
                 <div class="min-w-0">
                     <p class="font-extrabold truncate">{{ $outing->title }}</p>
-                    <p class="text-xs muted truncate">{{ collect([$outing->time_range, $outing->location, $outing->crewPlans->map(fn ($plan) => $plan->boat->name)->join(', '), $outing->conditionsSummary()])->filter()->join(' · ') }}</p>
+                    <p class="text-xs muted truncate">{{ collect([$outing->time_range, $outing->location, $outing->crewPlans->map(fn ($plan) => $plan->boat->name)->unique()->join(', '), $outing->conditionsSummary()])->filter()->join(' · ') }}</p>
                 </div>
             </div>
             <div class="grid grid-cols-5 gap-2 lg:w-[520px]">

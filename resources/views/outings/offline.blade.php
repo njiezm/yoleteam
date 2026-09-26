@@ -23,9 +23,9 @@
                 </div>
             </div>
 
-            <section id="appel">
+            <section id="appel" class="scroll-mt-24">
                 <div class="flex items-center justify-between gap-3 mb-3">
-                    <h2 class="font-extrabold text-lg">Appel</h2>
+                    <h2 class="font-extrabold text-lg">1. Appel</h2>
                     <button type="button" class="btn-ghost btn-sm" data-all-present><x-icon name="check" class="w-4 h-4" />Tous présents</button>
                 </div>
                 <div data-attendance data-deferred data-url="" data-outing-uuid="" data-outing-label="">
@@ -54,10 +54,10 @@
                 </div>
             </section>
 
-            <section>
-                <h2 class="font-extrabold text-lg mb-3">Plans d’équipage</h2>
-                <div class="grid gap-5 lg:grid-cols-2" data-outing-plans data-deferred data-outing-uuid="">
-                    <div class="lg:col-span-2 hidden" data-offline-plans></div>
+            <section id="equipages" class="scroll-mt-24">
+                <h2 class="font-extrabold text-lg mb-3">2. Équipages</h2>
+                <div class="space-y-3" data-outing-plans data-deferred data-outing-uuid="">
+                    <div class="hidden space-y-3" data-offline-plans></div>
                     @if ($boats->isNotEmpty())
                         <form data-plan-create class="card p-5 border-dashed border-2 border-slate-300 bg-slate-50/50 flex flex-col justify-center gap-3">
                             <p class="font-bold flex items-center gap-2"><x-icon name="plus" class="w-4 h-4" />Engager une yole</p>
@@ -73,6 +73,18 @@
                     @endif
                 </div>
             </section>
+
+            {{-- The forms below point to the outing by its uuid: replayed after the outing itself at sync. --}}
+            @include('outings._navigation', ['outing' => null, 'number' => 3, 'redirectTo' => null])
+
+            <form method="POST" action="" data-complete-form class="card p-5 flex flex-wrap items-center gap-4" data-offline-form="Sortie validée">
+                @csrf
+                <div class="flex-1 min-w-[12rem]">
+                    <p class="font-extrabold">Valider la sortie</p>
+                    <p class="text-sm muted">Enregistré sur l’appareil, appliqué à la synchronisation. Tout reste modifiable ensuite.</p>
+                </div>
+                <button class="btn-sun w-full sm:w-auto"><x-icon name="check" class="w-4 h-4" />Valider la sortie</button>
+            </form>
         </div>
 
         <script type="application/json" data-plan-templates>@json($planTemplates, JSON_UNESCAPED_UNICODE)</script>

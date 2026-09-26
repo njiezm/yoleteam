@@ -196,8 +196,7 @@ class DemoSeeder extends Seeder
         // Distance sailed on the Pointe Faula outing: duration and average speed show on its page.
         $outings[2]->update([
             'distance_nm' => 14.5,
-            'notes_before' => 'Alizé bien établi, équipage au complet.',
-            'notes_after' => 'Belle vitesse au portant, virements encore lents.',
+            'impressions' => 'Alizé bien établi, équipage au complet. Belle vitesse au portant, virements encore lents.',
         ]);
 
         $past = $outings->filter(fn (Outing $o) => $o->date->isPast())->values();

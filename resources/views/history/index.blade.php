@@ -74,19 +74,19 @@
         </div>
 
         <div class="grid gap-5 lg:grid-cols-2 mt-5">
-            <div class="card p-5">
+            <div class="card p-5 min-w-0">
                 <x-section-title title="Les plus assidus" />
                 @foreach ($mostAssiduous as $row)
                     <a href="{{ route('members.show', $row['member']) }}" class="flex items-center gap-3 py-2">
                         <span @class(['w-6 text-sm font-extrabold', 'text-sun-500' => $loop->first, 'muted' => ! $loop->first])>{{ $loop->iteration }}</span>
                         <x-avatar :member="$row['member']" size="w-8 h-8 text-[10px]" />
-                        <span class="flex-1 text-sm font-semibold truncate">{{ $row['member']->full_name }}</span>
+                        <span class="flex-1 min-w-0 text-sm font-semibold truncate">{{ $row['member']->full_name }}</span>
                         <div class="w-24"><x-bar :value="$row['rate']" :color="$rateColor($row['rate'])" /></div>
                         <span class="text-sm font-bold w-10 text-right">{{ $row['rate'] }}%</span>
                     </a>
                 @endforeach
             </div>
-            <div class="card p-5">
+            <div class="card p-5 min-w-0">
                 <x-section-title title="À relancer" />
                 @foreach ($toFollowUp as $row)
                     <div class="flex items-center gap-3 py-2">

@@ -1,19 +1,25 @@
 <x-layouts.app :title="$outing->title" :crumb="'Sorties · '.ucfirst($outing->date->translatedFormat('l j F Y'))" :back="route('outings.index')">
     <x-slot:actions>
         <a href="{{ route('outings.edit', $outing) }}" class="btn-ghost btn-sm"><x-icon name="edit" class="w-4 h-4" />Modifier</a>
-        <a href="{{ route('attendance.edit', $outing) }}" class="btn-sun btn-sm"><x-icon name="check-square" class="w-4 h-4" />Faire l’appel</a>
+        <a href="#appel" class="btn-sun btn-sm"><x-icon name="check-square" class="w-4 h-4" />Faire l’appel</a>
     </x-slot:actions>
 
     @php
+        $statuses = \App\Enums\AttendanceStatus::cases();
+        $isRace = $outing->type === \App\Enums\OutingType::Regate;
         $onSite = $counts['present'] + $counts['retard'];
-        $toRecord = max(0, $activeMembers - $counts['total']);
+        $toRecord = max(0, $members->count() - $attendances->count());
+        $plansByRace = $outing->crewPlans->groupBy('race_number');
         $validated = $outing->crewPlans->filter->isValidated()->count();
-        $filledSummary = $outing->crewPlans->map(fn ($plan) => $plan->boat->name.' '.$plan->assignments->count().'/'.$plan->configuration->positions->count())->join(' · ');
-        $steps = [
-            ['Présences', "$onSite présents · $toRecord à pointer", route('attendance.edit', $outing), $counts['total'] === 0],
-            ['Constitution des équipages', $filledSummary ?: 'Aucune yole engagée', $outing->crewPlans->count() === 1 ? route('crew-plans.edit', [$outing, $outing->crewPlans->first()]) : '#equipages', $counts['total'] > 0 && $validated < $outing->crewPlans->count()],
-            ['Validation', $outing->crewPlans->isEmpty() ? '—' : "$validated plan(s) sur {$outing->crewPlans->count()} validé(s)", '#equipages', false],
-        ];
+        $completed = $outing->status === \App\Enums\OutingStatus::Terminee;
+        $hasNavigation = $outing->impressions || $outing->distance_nm !== null || $outing->end_time;
+        $steps = array_values(array_filter([
+            ['appel', 'Appel', $counts['total'] > 0, $counts['total'] ? "$onSite présent(s)" : 'À faire'],
+            ['equipages', 'Équipages', $outing->crewPlans->isNotEmpty() && $validated === $outing->crewPlans->count(), $outing->crewPlans->isEmpty() ? 'Aucune yole' : "$validated/{$outing->crewPlans->count()} validé(s)"],
+            ['navigation', 'Navigation', (bool) $hasNavigation, $hasNavigation ? 'Saisie' : 'Après la sortie'],
+            $outing->type->hasResults() ? ['resultats', 'Résultats', $outing->races->isNotEmpty() || $outing->day_rank || $outing->stage_rank, $outing->races->isNotEmpty() ? $outing->races->count().' course(s)' : 'À saisir'] : null,
+            ['validation', 'Validation', $completed, $completed ? 'Validée' : 'À la fin'],
+        ]));
     @endphp
 
     <div class="card p-5 flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -32,75 +38,171 @@
         @if ($outing->creator)
             <span class="text-sm font-semibold flex items-center gap-1.5 text-slate-700"><x-icon name="user" class="w-4 h-4 text-slate-400" />{{ $outing->creator->name }}</span>
         @endif
+        @if ($outing->notes)
+            <div class="basis-full pt-3 border-t border-slate-100">
+                <p class="text-[11px] font-bold uppercase muted mb-1">Consignes</p>
+                <p class="text-sm text-slate-700 whitespace-pre-line">{{ $outing->notes }}</p>
+            </div>
+        @endif
     </div>
 
-    @include('outings._notes-card')
-
-    @if ($outing->type->hasResults())
-        @include('outings._results-card')
-    @endif
-
-    <div class="card p-5 mt-5">
-        <p class="text-[11px] font-bold uppercase muted mb-4">Déroulé avant la sortie</p>
-        <ol class="grid sm:grid-cols-3 gap-3">
-            @foreach ($steps as $index => [$label, $summary, $url, $isCurrent])
-                <li>
-                    <a href="{{ $url }}" @class(['flex items-center gap-3 p-4 rounded-2xl', 'bg-sun-100 ring-2 ring-sun-400' => $isCurrent, 'bg-slate-50 hover:bg-slate-100' => ! $isCurrent])>
-                        <span @class(['w-9 h-9 shrink-0 rounded-full grid place-items-center font-extrabold', 'bg-sun-400 text-navy-950' => $isCurrent, 'bg-white text-navy-900 border border-slate-200' => ! $isCurrent])>{{ $index + 1 }}</span>
-                        <div class="flex-1 min-w-0"><p class="font-bold">{{ $label }}</p><p class="text-xs muted truncate">{{ $summary }}</p></div>
-                        <x-icon name="right" class="w-4 h-4 text-slate-400" />
+    {{-- Steps of the outing, in order: the page scrolls from one to the next. --}}
+    <nav class="mt-4 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-none" aria-label="Étapes de la sortie">
+        <ol class="flex gap-2 min-w-max sm:min-w-0">
+            @foreach ($steps as $index => [$anchor, $label, $done, $summary])
+                <li class="sm:flex-1">
+                    <a href="#{{ $anchor }}" @class(['flex items-center gap-2 rounded-xl px-3 py-2 border', 'bg-emerald-50 border-emerald-200' => $done, 'bg-white border-slate-200 hover:bg-slate-50' => ! $done])>
+                        <span @class(['w-7 h-7 shrink-0 rounded-full grid place-items-center text-xs font-extrabold', 'bg-emerald-500 text-white' => $done, 'bg-slate-100 text-navy-900' => ! $done])>
+                            @if ($done)<x-icon name="check" class="w-3.5 h-3.5" />@else{{ $index + 1 }}@endif
+                        </span>
+                        <span class="min-w-0"><span class="block text-sm font-bold leading-tight">{{ $label }}</span><span class="block text-[11px] muted leading-tight truncate">{{ $summary }}</span></span>
                     </a>
                 </li>
             @endforeach
         </ol>
-    </div>
+    </nav>
 
-    <div id="equipages" class="grid gap-5 lg:grid-cols-2 mt-5" data-outing-plans data-outing-uuid="{{ $outing->uuid }}">
-        <div class="lg:col-span-2 hidden" data-offline-plans></div>
-        @foreach ($outing->crewPlans as $plan)
-            @php($total = $plan->configuration->positions->count())
-            @php($filled = $plan->assignments->count())
-            <a href="{{ $plan->isValidated() ? route('crew-plans.show', [$outing, $plan]) : route('crew-plans.edit', [$outing, $plan]) }}" class="card p-5 flex gap-5 hover:shadow-lg transition">
-                <x-yole class="w-28 shrink-0 self-start" :data="$presenter->drawing($plan->boat, $plan->configuration, $plan, ['labels' => false, 'compact' => true, 'wind' => false])" />
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between gap-2"><h3 class="text-lg font-extrabold">{{ $plan->boat->name }}</h3><x-plan-status :plan="$plan" /></div>
-                    <p class="text-sm muted">{{ $plan->configuration->name }} · {{ $plan->configuration->bwa_count }} bwa dressés</p>
-                    <x-bar class="mt-4" :value="$total ? $filled / $total * 100 : 0" :color="$plan->boat->color()" />
-                    <p class="text-xs font-bold mt-1.5">{{ $filled }}/{{ $total }} postes pourvus</p>
-                    @if ($filled)
-                        <div class="flex -space-x-2 mt-4">
-                            @foreach ($plan->assignments->take(7) as $assignment)
-                                <x-avatar :member="$assignment->member" size="w-8 h-8 text-[10px]" class="ring-2 ring-white" />
-                            @endforeach
-                            @if ($filled > 7)
-                                <span class="w-8 h-8 rounded-full bg-slate-100 ring-2 ring-white grid place-items-center text-[10px] font-bold">+{{ $filled - 7 }}</span>
-                            @endif
-                        </div>
-                    @endif
-                    <p class="mt-4 text-sm font-bold text-navy-700 flex items-center gap-1">{{ $plan->isValidated() ? 'Voir le plan' : ($filled ? 'Continuer le plan' : 'Composer l’équipage') }} <x-icon name="right" class="w-4 h-4" /></p>
+    {{-- 1. Appel --}}
+    <section id="appel" class="mt-5 scroll-mt-24">
+        <div class="flex items-center justify-between gap-3 mb-3">
+            <h2 class="font-extrabold text-lg">1. Appel</h2>
+            <div class="flex gap-2">
+                <a href="{{ route('attendance.edit', $outing) }}" class="btn-ghost btn-sm hidden sm:inline-flex" title="Ouvrir l’appel en plein écran"><x-icon name="check-square" class="w-4 h-4" />Plein écran</a>
+                <button type="button" class="btn-ghost btn-sm" data-all-present><x-icon name="check" class="w-4 h-4" />Tous présents</button>
+            </div>
+        </div>
+        <div data-attendance data-url="{{ route('attendance.update', $outing) }}" data-outing-uuid="{{ $outing->uuid }}" data-outing-label="{{ $outing->title }} · {{ $outing->date->translatedFormat('j M') }}">
+            <div class="grid grid-cols-5 gap-2">
+                @foreach ($statuses as $status)
+                    <div class="rounded-xl p-2 sm:p-2.5 text-center min-w-0" style="background: {{ $status->background() }}; color: {{ $status->textColor() }}">
+                        <p class="text-lg sm:text-xl font-extrabold" data-count="{{ $status->value }}">{{ $counts[$status->value] }}</p>
+                        <p class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wide truncate">{{ $status->label() }}</p>
+                    </div>
+                @endforeach
+                <div class="rounded-xl p-2 sm:p-2.5 text-center bg-slate-100 min-w-0">
+                    <p class="text-lg sm:text-xl font-extrabold text-slate-600" data-count="none">{{ $toRecord }}</p>
+                    <p class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wide text-slate-500 truncate">À pointer</p>
                 </div>
-            </a>
-        @endforeach
-
-        @if ($availableBoats->isNotEmpty())
-            <form method="POST" action="{{ route('crew-plans.store', $outing) }}" data-plan-create class="card p-5 border-dashed border-2 border-slate-300 bg-slate-50/50 flex flex-col justify-center gap-3">
+            </div>
+            <label class="relative block mt-4">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><x-icon name="search" class="w-4 h-4" /></span>
+                <input type="search" data-search class="input pl-9" placeholder="Rechercher un membre…" aria-label="Rechercher un membre">
+            </label>
+            <form id="attendance-form" method="POST" action="{{ route('attendance.update', $outing) }}">
                 @csrf
-                <p class="font-bold flex items-center gap-2"><x-icon name="plus" class="w-4 h-4" />Engager une yole</p>
-                <div class="flex flex-wrap gap-2">
-                    <select name="boat_id" class="input flex-1 min-w-40" aria-label="Yole">
-                        @foreach ($availableBoats as $boat)
-                            <option value="{{ $boat->id }}">{{ $boat->name }}</option>
-                        @endforeach
-                    </select>
-                    <button class="btn-primary">Créer le plan</button>
+                @method('PUT')
+                <div class="card mt-4 divide-y divide-slate-100 overflow-hidden">
+                    @include('attendance._rows')
                 </div>
-                @error('boat_id')<p class="text-xs text-red-600 font-semibold">{{ $message }}</p>@enderror
-                <p class="text-xs muted">La configuration par défaut de la yole est utilisée ; vous pourrez passer de 1 à 2 voiles dans l’éditeur.</p>
             </form>
-        @elseif ($outing->crewPlans->isEmpty())
-            <x-empty-state class="lg:col-span-2" icon="boat" title="Aucune yole disponible" text="Ajoutez une yole ou remettez-en une en service pour composer un équipage." />
-        @endif
+            <p class="text-xs muted text-center mt-3" data-save-state>Chaque clic est enregistré immédiatement.</p>
+        </div>
+        <div class="flex justify-center mt-3">
+            <a href="#equipages" class="btn-primary btn-sm">Appel terminé · composer les équipages <x-icon name="right" class="w-4 h-4 rotate-90" /></a>
+        </div>
+    </section>
+
+    {{-- 2. Équipages --}}
+    <section id="equipages" class="mt-8 scroll-mt-24">
+        <div class="mb-3">
+            <h2 class="font-extrabold text-lg">2. Équipages</h2>
+            @if ($isRace)
+                <p class="text-xs muted">Un équipage par manche : il peut changer d’une manche à l’autre.</p>
+            @endif
+        </div>
+        <div class="space-y-5" data-outing-plans data-outing-uuid="{{ $outing->uuid }}">
+            <div class="hidden space-y-3" data-offline-plans></div>
+
+            @foreach ($plansByRace as $raceNumber => $plans)
+                <div>
+                    @if ($isRace)
+                        <p class="text-[11px] font-bold uppercase muted mb-2">Manche {{ $raceNumber }}</p>
+                    @endif
+                    <div class="grid gap-3 lg:grid-cols-2">
+                        @foreach ($plans as $plan)
+                            @include('outings._plan-card')
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
+
+            @if ($nextRaces->isNotEmpty())
+                <div class="grid gap-3 lg:grid-cols-2">
+                    @foreach ($nextRaces as $last)
+                        <form method="POST" action="{{ route('crew-plans.store', $outing) }}" data-plan-create data-template="{{ $last->boat_id }}:{{ $last->race_number + 1 }}"
+                              class="card p-4 border-dashed border-2 border-slate-300 bg-slate-50/50 flex flex-wrap items-center gap-3">
+                            @csrf
+                            <input type="hidden" name="boat_id" value="{{ $last->boat_id }}">
+                            <input type="hidden" name="race_number" value="{{ $last->race_number + 1 }}">
+                            <input type="hidden" name="copy_from" value="{{ $last->id }}">
+                            <div class="flex-1 min-w-[10rem]">
+                                <p class="font-bold flex items-center gap-2"><x-icon name="plus" class="w-4 h-4" />{{ $last->boat->name }} · manche {{ $last->race_number + 1 }}</p>
+                                <p class="text-xs muted">Reprend l’équipage de la manche {{ $last->race_number }}, à ajuster.</p>
+                            </div>
+                            <button class="btn-primary btn-sm" data-submit-once>Préparer la manche {{ $last->race_number + 1 }}</button>
+                        </form>
+                    @endforeach
+                </div>
+            @endif
+
+            @if ($availableBoats->isNotEmpty())
+                <form method="POST" action="{{ route('crew-plans.store', $outing) }}" data-plan-create class="card p-4 border-dashed border-2 border-slate-300 bg-slate-50/50 flex flex-col gap-3">
+                    @csrf
+                    <p class="font-bold flex items-center gap-2"><x-icon name="plus" class="w-4 h-4" />Engager une yole</p>
+                    <div class="flex flex-wrap gap-2">
+                        <select name="boat_id" class="input flex-1 min-w-40" aria-label="Yole">
+                            @foreach ($availableBoats as $boat)
+                                <option value="{{ $boat->id }}">{{ $boat->name }}</option>
+                            @endforeach
+                        </select>
+                        <button class="btn-primary" data-submit-once>Créer le plan</button>
+                    </div>
+                    @error('boat_id')<p class="text-xs text-red-600 font-semibold">{{ $message }}</p>@enderror
+                    <p class="text-xs muted">La configuration par défaut de la yole est utilisée ; vous pourrez passer de 1 à 2 voiles dans l’éditeur.</p>
+                </form>
+            @elseif ($outing->crewPlans->isEmpty())
+                <x-empty-state icon="boat" title="Aucune yole disponible" text="Ajoutez une yole ou remettez-en une en service pour composer un équipage." />
+            @endif
+        </div>
+    </section>
+
+    {{-- 3. Navigation --}}
+    <div class="mt-8">
+        @include('outings._navigation', ['number' => 3])
     </div>
+
+    {{-- 4. Résultats (courses et TDY) --}}
+    @if ($outing->type->hasResults())
+        @include('outings._results-card', ['number' => 4])
+    @endif
+
+    {{-- Fin : valider la sortie (reste modifiable). --}}
+    <section id="validation" class="mt-8 scroll-mt-24">
+        @if ($completed)
+            <div class="card p-5 flex flex-wrap items-center gap-4 bg-emerald-50 border-emerald-200">
+                <span class="w-11 h-11 rounded-2xl bg-emerald-500 text-white grid place-items-center"><x-icon name="check" /></span>
+                <div class="flex-1 min-w-[12rem]">
+                    <p class="font-extrabold">Sortie validée</p>
+                    <p class="text-sm text-emerald-900">Tout reste modifiable : appel, équipages, navigation{{ $outing->type->hasResults() ? ', résultats' : '' }}.</p>
+                </div>
+                <form method="POST" action="{{ route('outings.reopen', $outing->uuid) }}" data-offline-form="Sortie rouverte : {{ $outing->title }}" data-offline-redirect="{{ route('outings.show', $outing) }}">
+                    @csrf
+                    @method('DELETE')
+                    <button class="btn-ghost btn-sm">Rouvrir</button>
+                </form>
+            </div>
+        @else
+            <form method="POST" action="{{ route('outings.complete', $outing->uuid) }}" class="card p-5 flex flex-wrap items-center gap-4"
+                  data-offline-form="Sortie validée : {{ $outing->title }}" data-offline-redirect="{{ route('outings.show', $outing) }}">
+                @csrf
+                <div class="flex-1 min-w-[12rem]">
+                    <p class="font-extrabold">Valider la sortie</p>
+                    <p class="text-sm muted">Quand l’appel, les équipages et la navigation sont faits. Vous pourrez encore tout modifier ensuite.</p>
+                </div>
+                <button class="btn-sun w-full sm:w-auto" data-submit-once><x-icon name="check" class="w-4 h-4" />Valider la sortie</button>
+            </form>
+        @endif
+    </section>
 
     <x-delete-zone :action="route('outings.destroy', $outing)" label="Supprimer la sortie"
                    :confirm="'Supprimer la sortie « '.$outing->title.' », son appel et ses plans d’équipage ?'"

@@ -1,4 +1,4 @@
-<x-layouts.app :title="$plan->boat->name.' · '.($plan->isValidated() ? 'Plan validé' : 'Plan d’équipage')" :crumb="ucfirst($outing->date->translatedFormat('D j M')).' · '.$outing->title" :back="route('outings.show', $outing)">
+<x-layouts.app :title="$plan->name().' · '.($plan->isValidated() ? 'Plan validé' : 'Plan d’équipage')" :crumb="ucfirst($outing->date->translatedFormat('D j M')).' · '.$outing->title" :back="route('outings.show', $outing)">
     <x-slot:actions>
         <button type="button" data-print class="btn-ghost btn-sm"><x-icon name="printer" class="w-4 h-4" />Imprimer / PDF</button>
         @if ($plan->isValidated())
@@ -39,7 +39,7 @@
         ])->filter()->join(' · ');
     @endphp
 
-    <h1 class="hidden print:block text-2xl font-extrabold mb-2">{{ $plan->boat->name }} — {{ $outing->title }} ({{ $outing->date->translatedFormat('j F Y') }})</h1>
+    <h1 class="hidden print:block text-2xl font-extrabold mb-2">{{ $plan->name() }} — {{ $outing->title }} ({{ $outing->date->translatedFormat('j F Y') }})</h1>
 
     @if ($plan->isValidated())
         <div class="card p-4 flex flex-wrap items-center gap-3 bg-emerald-50 border-emerald-200">
@@ -95,6 +95,17 @@
             @endif
         </div>
     </div>
+
+    @if ($plan->isValidated())
+        {{-- Next steps once the crew is validated: navigation impressions, then validating the outing. --}}
+        <div class="no-print mt-8">
+            @include('outings._navigation', ['redirectTo' => route('crew-plans.show', [$outing, $plan], false).'#navigation'])
+            <div class="card p-4 mt-4 flex flex-wrap items-center gap-3">
+                <p class="flex-1 min-w-[12rem] text-sm"><b>Étape suivante :</b> {{ $outing->status === \App\Enums\OutingStatus::Terminee ? 'la sortie est validée (elle reste modifiable).' : 'valider la sortie, une fois tout saisi.' }}</p>
+                <a href="{{ route('outings.show', $outing) }}#validation" class="btn-sun btn-sm">{{ $outing->status === \App\Enums\OutingStatus::Terminee ? 'Voir la sortie' : 'Valider la sortie' }} <x-icon name="right" class="w-4 h-4" /></a>
+            </div>
+        </div>
+    @endif
 
     <form method="POST" action="{{ route('crew-plans.destroy', [$outing, $plan]) }}" class="no-print mt-8 text-center" onsubmit="return confirm('Supprimer ce plan d’équipage ?')">
         @csrf
