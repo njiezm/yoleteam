@@ -289,7 +289,7 @@ class MemberTest extends TestCase
             ->assertSee($admin->name)
             ->assertSee($admin->association->name)
             ->assertSee(route('members.index'))
-            ->assertSee(route('history.index'))
+            ->assertSee(route('statistics.index'))
             ->assertSee(route('settings.edit'))
             ->assertSee(route('logout'));
 
@@ -300,6 +300,154 @@ class MemberTest extends TestCase
             ->assertSee('Patron')
             ->assertSee(route('boats.index'))
             ->assertDontSee(route('settings.edit'));
+    }
+
+    public function test_index_and_show_display_age_and_years_of_yole(): void
+    {
+        $this->travelTo('2026-06-15 10:00:00');
+        $user = $this->signInAdmin();
+        $member = $this->member($user, ['first_name' => 'Kévin', 'last_name' => 'Rosemain', 'nickname' => 'Kéké', 'birth_date' => '1990-09-01', 'yole_since_year' => 2014]);
+        $this->member($user, ['first_name' => 'Novice', 'birth_date' => '2008-01-10', 'yole_since_year' => 2026]);
+
+        $this->get(route('members.index'))
+            ->assertOk()
+            ->assertSee('« Kéké » · 35 ans · 12 ans de yole', false)
+            ->assertSee('18 ans · Première année de yole', false);
+
+        $this->get(route('members.show', $member))
+            ->assertOk()
+            ->assertSee('35 ans · 12 ans de yole', false);
+    }
+
+    public function test_member_without_birth_date_or_start_year_shows_neither(): void
+    {
+        $user = $this->signInAdmin();
+        $member = $this->member($user, ['birth_date' => null, 'yole_since_year' => null]);
+
+        $this->get(route('members.show', $member))->assertOk()->assertDontSee('de yole');
+    }
+
+    public function test_form_has_start_year_and_live_age_hooks_but_no_category(): void
+    {
+        $user = $this->signInAdmin();
+        $member = $this->member($user, ['birth_date' => now()->subYears(30)->subMonth(), 'yole_since_year' => 2010]);
+
+        $this->get(route('members.create'))
+            ->assertOk()
+            ->assertSee('Pratique la yole depuis (année)')
+            ->assertSee('data-member-form', false)
+            ->assertSee('data-member-birth-date', false)
+            ->assertSee('data-member-age', false)
+            ->assertSee('data-offline-form', false)
+            ->assertDontSee('name="category"', false)
+            ->assertDontSee('Catégorie');
+
+        $this->get(route('members.edit', $member))
+            ->assertOk()
+            ->assertSee('value="2010"', false)
+            ->assertSee('30 ans');
+    }
+
+    public function test_admin_saves_the_yole_start_year_and_category_is_ignored(): void
+    {
+        $this->signInAdmin();
+
+        $this->post(route('members.store'), $this->payload(['yole_since_year' => '2016', 'category' => 'jeune']))->assertSessionHasNoErrors();
+
+        $member = Member::sole();
+        $this->assertSame(2016, $member->yole_since_year);
+        $this->assertSame(today()->year - 2016, $member->yoleYears());
+        $this->assertDatabaseHas('members', ['id' => $member->id, 'category' => null]);
+    }
+
+    public function test_yole_start_year_is_bounded(): void
+    {
+        $this->signInAdmin();
+
+        $this->post(route('members.store'), $this->payload(['yole_since_year' => '1949']))->assertSessionHasErrors('yole_since_year');
+        $this->post(route('members.store'), $this->payload(['yole_since_year' => (string) (today()->year + 1)]))->assertSessionHasErrors('yole_since_year');
+        $this->post(route('members.store'), $this->payload(['yole_since_year' => 'abc']))->assertSessionHasErrors('yole_since_year');
+
+        $this->assertSame(0, Member::count());
+    }
+
+    public function test_index_links_to_exports_with_the_current_filters(): void
+    {
+        $this->signInPatron();
+
+        $this->get(route('members.index', ['q' => 'Rose', 'level' => 'expert']))
+            ->assertOk()
+            ->assertSee('Exporter Excel')
+            ->assertSee(route('members.export', ['q' => 'Rose', 'level' => 'expert']))
+            ->assertSee(route('members.print', ['q' => 'Rose', 'level' => 'expert']));
+    }
+
+    public function test_excel_export_is_a_valid_xlsx_with_the_filtered_members(): void
+    {
+        $this->travelTo('2026-06-15 10:00:00');
+        $user = $this->signInAdmin();
+        $roles = CrewRole::idsByCode();
+        $kevin = $this->member($user, ['first_name' => 'Kévin', 'last_name' => 'Rosemain', 'level' => MemberLevel::Expert, 'birth_date' => '1990-09-01', 'yole_since_year' => 2014, 'weight_kg' => 78.5]);
+        $kevin->crewRoles()->attach([$roles[CrewRole::DRESSEUR] => ['is_preferred' => true], $roles[CrewRole::ECOPEUR] => ['is_preferred' => false]]);
+        $this->attend($kevin, now()->subDays(3), AttendanceStatus::Present);
+        $this->member($user, ['first_name' => 'Debutin', 'level' => MemberLevel::Debutant]);
+        Member::factory()->create(['first_name' => 'Étrangère', 'level' => MemberLevel::Expert]);
+
+        $response = $this->get(route('members.export', ['level' => 'expert']))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->assertDownload('membres-2026-06-15.xlsx');
+
+        $sheet = $this->sheetXml($response->streamedContent());
+
+        $this->assertStringContainsString('<t xml:space="preserve">Années de yole</t>', $sheet);
+        $this->assertStringContainsString('<t xml:space="preserve">Rosemain</t>', $sheet);
+        $this->assertStringContainsString('<t xml:space="preserve">Bwa dressé ★, Écopeur</t>', $sheet);
+        $this->assertStringContainsString('<c r="D2"><v>35</v></c><c r="E2"><v>12</v></c><c r="F2"><v>78.5</v></c>', $sheet);
+        $this->assertStringContainsString('<c r="M2"><v>100</v></c>', $sheet);
+        $this->assertStringNotContainsString('Debutin', $sheet);
+        $this->assertStringNotContainsString('Étrangère', $sheet);
+    }
+
+    public function test_print_page_lists_the_filtered_members_and_opens_the_print_dialog(): void
+    {
+        $user = $this->signInPatron();
+        $this->member($user, ['first_name' => 'Kévin', 'last_name' => 'Rosemain']);
+        $this->member($user, ['first_name' => 'Rodrigue', 'last_name' => 'Céleste']);
+
+        $this->get(route('members.print', ['q' => 'rose']))
+            ->assertOk()
+            ->assertSee($user->association->name)
+            ->assertSee('Liste des membres')
+            ->assertSee('Recherche « rose » · Membres actifs', false)
+            ->assertSee('Rosemain')
+            ->assertDontSee('Céleste')
+            ->assertSee('Imprimer / Enregistrer en PDF')
+            ->assertSee('window.print()', false);
+    }
+
+    public function test_guests_cannot_export_members(): void
+    {
+        $this->get(route('members.export'))->assertRedirect(route('login'));
+        $this->get(route('members.print'))->assertRedirect(route('login'));
+    }
+
+    private function sheetXml(string $binary): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'test-xlsx');
+        file_put_contents($path, $binary);
+
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($path));
+        $this->assertNotFalse($zip->locateName('[Content_Types].xml'));
+        $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        unlink($path);
+
+        $this->assertIsString($sheet);
+        $this->assertNotFalse(simplexml_load_string($sheet));
+
+        return $sheet;
     }
 
     /**
@@ -339,7 +487,7 @@ class MemberTest extends TestCase
             'weight_kg' => '74.5',
             'height_cm' => '178',
             'level' => 'intermediaire',
-            'category' => 'jeune',
+            'yole_since_year' => '2016',
             'notes' => 'Disponible le mercredi.',
             'is_active' => '1',
             ...$overrides,

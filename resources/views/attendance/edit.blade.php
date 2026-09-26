@@ -1,5 +1,6 @@
-<x-layouts.app title="Présences du jour" :crumb="ucfirst($outing->date->translatedFormat('D j M')).' · '.$outing->title" :back="route('outings.show', $outing)">
+<x-layouts.app title="Présences" :crumb="ucfirst($outing->date->translatedFormat('D j M')).' · '.$outing->title" :back="route('outings.show', $outing)">
     <x-slot:actions>
+        <a href="{{ route('attendance.stats') }}" class="btn-ghost btn-sm"><x-icon name="chart" class="w-4 h-4" />Statistiques</a>
         <button form="attendance-form" name="all_present" value="1" class="btn-ghost btn-sm" data-all-present><x-icon name="check" class="w-4 h-4" />Tous présents</button>
         <a href="{{ route('outings.show', $outing) }}" class="btn-primary btn-sm">Équipages <x-icon name="right" class="w-4 h-4" /></a>
     </x-slot:actions>
@@ -11,7 +12,12 @@
     </x-slot:sticky>
 
     @php($statuses = \App\Enums\AttendanceStatus::cases())
-    <div data-attendance data-url="{{ route('attendance.update', $outing) }}" data-outing-uuid="{{ $outing->uuid }}" data-outing-label="{{ $outing->title }} · {{ $outing->date->translatedFormat('j M') }}">
+    <div class="flex flex-col sm:flex-row gap-2 mb-4">
+        <x-outing-picker :current="$outing" target="attendance" class="flex-1" />
+        <a href="{{ route('attendance.stats') }}" class="btn-ghost lg:hidden"><x-icon name="chart" class="w-4 h-4" />Statistiques</a>
+    </div>
+
+    <div data-attendance data-url="{{ route('attendance.update', $outing) }}" data-outing-uuid="{{ $outing->uuid }}" data-outing-date="{{ $outing->date->toDateString() }}" data-outing-label="{{ $outing->title }} · {{ $outing->date->translatedFormat('j M') }}">
         <div class="card p-4 lg:p-5 flex flex-col lg:flex-row lg:items-center gap-4">
             <div class="flex items-center gap-3 flex-1 min-w-0">
                 <span class="w-12 h-12 shrink-0 rounded-2xl bg-navy-900 text-sun-400 grid place-items-center"><x-icon name="calendar" /></span>

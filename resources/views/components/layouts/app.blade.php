@@ -4,19 +4,19 @@
     $nav = [
         ['dashboard', 'home', 'Tableau de bord', 'dashboard'],
         ['outings.index', 'calendar', 'Sorties', 'outings.*'],
-        ['attendance.today', 'check-square', 'Présences du jour', ['attendance.*']],
+        ['attendance.today', 'check-square', 'Présences', ['attendance.*']],
         ['crew-plans.today', 'boat', 'Plan d’équipage', ['crew-plans.*']],
         ['members.index', 'users', 'Membres', 'members.*'],
         ['boats.index', 'boat', 'Yoles', 'boats.*'],
-        ['races.index', 'trophy', 'Régates', 'races.*'],
-        ['history.index', 'chart', 'Historique & stats', 'history.*'],
+        ['statistics.index', 'chart', 'Statistiques', 'statistics.*'],
     ];
+    $nav = array_values(array_filter($nav, fn ($item) => \Illuminate\Support\Facades\Route::has($item[0])));
     $mobileNav = [
         ['dashboard', 'home', 'Accueil', ['dashboard']],
         ['outings.index', 'calendar', 'Sorties', ['outings.*']],
-        ['attendance.today', 'check-square', 'Appel', ['attendance.*']],
+        ['attendance.today', 'check-square', 'Présences', ['attendance.*']],
         ['crew-plans.today', 'boat', 'Équipage', ['crew-plans.*']],
-        ['more', 'more', 'Plus', ['more', 'members.*', 'boats.*', 'races.*', 'history.*', 'settings.*', 'sync.*', 'profile.*', 'super-admin.*']],
+        ['more', 'more', 'Plus', ['more', 'members.*', 'boats.*', 'statistics.*', 'settings.*', 'sync.*', 'profile.*', 'super-admin.*']],
     ];
     $initials = collect(explode(' ', $user->name))->map(fn ($part) => mb_substr($part, 0, 1))->take(2)->join('');
 @endphp

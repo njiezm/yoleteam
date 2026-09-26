@@ -21,7 +21,7 @@
                 <x-select name="role" :options="\App\Enums\UserRole::options()" :value="$user->role" required />
             </x-field>
             <x-field :label="$user->exists ? 'Nouveau mot de passe' : 'Mot de passe *'" name="password" :hint="$user->exists ? 'Laisser vide pour conserver le mot de passe actuel.' : '8 caractères minimum.'">
-                <input id="password" name="password" type="password" minlength="8" autocomplete="new-password" @required(! $user->exists) @class(['input', 'input-error' => $errors->has('password')])>
+                <x-password-input name="password" minlength="8" autocomplete="new-password" :required="! $user->exists" />
             </x-field>
         </div>
     </section>

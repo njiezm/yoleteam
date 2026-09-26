@@ -4,8 +4,8 @@
     $links = [
         ['members.index', 'users', 'Membres'],
         ['boats.index', 'boat', 'Yoles'],
-        ['races.index', 'trophy', 'Régates'],
-        ['history.index', 'chart', 'Historique & stats'],
+        ['statistics.index', 'chart', 'Statistiques'],
+        ['attendance.stats', 'check-square', 'Statistiques de présence'],
         ['sync.index', 'refresh', 'Synchronisation'],
     ];
 @endphp
@@ -21,7 +21,7 @@
         </a>
 
         <div class="card mt-4 divide-y divide-slate-100">
-            @foreach ($links as [$route, $icon, $label])
+            @foreach (array_filter($links, fn ($link) => \Illuminate\Support\Facades\Route::has($link[0])) as [$route, $icon, $label])
                 <a href="{{ route($route) }}" class="flex items-center gap-3 px-4 py-3.5">
                     <span class="w-9 h-9 rounded-xl bg-navy-50 text-navy-700 grid place-items-center"><x-icon :name="$icon" class="w-[18px] h-[18px]" /></span>
                     <span class="flex-1 font-semibold">{{ $label }}</span>

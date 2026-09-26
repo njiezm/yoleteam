@@ -9,11 +9,8 @@
 @endphp
 <input type="hidden" name="_form" value="{{ $form }}">
 <div class="grid sm:grid-cols-2 gap-4">
-    <x-field label="Nom *" name="name">
+    <x-field label="Nom *" name="name" class="sm:col-span-2">
         <input id="name" name="name" value="{{ $old('name', $boat->name) }}" required maxlength="255" placeholder="Ti-Bwa" @class(['input', 'input-error' => $errors->has('name')])>
-    </x-field>
-    <x-field label="Sponsor" name="sponsor">
-        <input id="sponsor" name="sponsor" value="{{ $old('sponsor', $boat->sponsor) }}" maxlength="255" placeholder="Rhum Clément" @class(['input', 'input-error' => $errors->has('sponsor')])>
     </x-field>
     <x-field label="Couleur de coque" name="hull_color">
         @php

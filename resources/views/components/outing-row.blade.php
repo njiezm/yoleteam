@@ -8,7 +8,7 @@
     <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
             <p class="font-bold truncate group-hover:text-navy-600">{{ $outing->title }}</p>
-            <span class="chip {{ $outing->type === \App\Enums\OutingType::Regate ? 'bg-sun-100 text-amber-800' : 'bg-slate-100 text-slate-700' }}">{{ $outing->type->label() }}</span>
+            <span class="chip {{ match ($outing->type) { \App\Enums\OutingType::Regate => 'bg-sun-100 text-amber-800', \App\Enums\OutingType::Tdy => 'bg-sky-100 text-sky-800', default => 'bg-slate-100 text-slate-700' } }}">{{ $outing->type->label() }}</span>
         </div>
         <p class="text-xs muted mt-0.5 flex items-center gap-3 flex-wrap">
             @if ($outing->time_range)

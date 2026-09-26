@@ -1,12 +1,15 @@
 @php
     $rateColor = fn (?int $rate) => \App\Services\AttendanceStats::rateColor($rate);
 @endphp
-<x-layouts.app title="Historique & statistiques" crumb="Présences">
+<x-layouts.app title="Statistiques de présence" crumb="Présences" :back="route('attendance.today')">
     <x-slot:actions>
+        <a href="{{ route('attendance.today') }}" class="btn-ghost btn-sm"><x-icon name="check-square" class="w-4 h-4" />Faire l’appel</a>
         <a href="{{ route('history.export', array_filter($filters)) }}" class="btn-ghost btn-sm"><x-icon name="download" class="w-4 h-4" />Exporter CSV</a>
     </x-slot:actions>
 
-    <form method="GET" action="{{ route('history.index') }}" class="flex flex-wrap gap-2">
+    @include('attendance._alerts', ['alerts' => $alerts, 'withRules' => true])
+
+    <form method="GET" action="{{ route('attendance.stats') }}" class="flex flex-wrap gap-2 mt-5">
         <select name="period" class="input w-48" aria-label="Période" onchange="this.form.submit()">
             <option value="30" @selected($filters['period'] === '30')>30 derniers jours</option>
             <option value="season" @selected($filters['period'] === 'season')>Saison {{ today()->year }}</option>

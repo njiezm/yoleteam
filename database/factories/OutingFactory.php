@@ -28,4 +28,14 @@ class OutingFactory extends Factory
             'status' => $date < now() ? OutingStatus::Terminee : OutingStatus::Planifiee,
         ];
     }
+
+    public function regate(): static
+    {
+        return $this->state(['type' => OutingType::Regate, 'title' => 'Régate']);
+    }
+
+    public function tdy(): static
+    {
+        return $this->state(['type' => OutingType::Tdy, 'title' => 'Tour des yoles · étape']);
+    }
 }

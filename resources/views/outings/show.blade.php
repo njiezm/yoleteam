@@ -29,16 +29,15 @@
         @if ($outing->conditionsSummary())
             <span class="text-sm font-semibold flex items-center gap-1.5 text-slate-700"><x-icon name="wind" class="w-4 h-4 text-slate-400" />{{ $outing->conditionsSummary() }}</span>
         @endif
-        @if ($outing->raceStage)
-            <a href="{{ route('races.show', $outing->raceStage->race) }}" class="text-sm font-semibold flex items-center gap-1.5 text-navy-700"><x-icon name="trophy" class="w-4 h-4 text-slate-400" />{{ $outing->raceStage->race->name }} · {{ $outing->raceStage->name }}</a>
-        @endif
         @if ($outing->creator)
             <span class="text-sm font-semibold flex items-center gap-1.5 text-slate-700"><x-icon name="user" class="w-4 h-4 text-slate-400" />{{ $outing->creator->name }}</span>
         @endif
     </div>
 
-    @if ($outing->notes)
-        <div class="card p-5 mt-5"><p class="text-[11px] font-bold uppercase muted mb-2">Consignes</p><p class="text-sm text-slate-700 whitespace-pre-line">{{ $outing->notes }}</p></div>
+    @include('outings._notes-card')
+
+    @if ($outing->type->hasResults())
+        @include('outings._results-card')
     @endif
 
     <div class="card p-5 mt-5">

@@ -8,7 +8,6 @@ use App\Http\Requests\OutingRequest;
 use App\Models\Boat;
 use App\Models\Member;
 use App\Models\Outing;
-use App\Models\RaceStage;
 use App\Services\AttendanceStats;
 use App\Services\CrewPlanEditorData;
 use App\Services\CrewPlanPresenter;
@@ -50,7 +49,6 @@ class OutingController extends Controller
         return view('outings.create', [
             'outing' => new Outing(['date' => $request->date('date') ?? today(), 'start_time' => '06:00', 'end_time' => '09:00']),
             'boats' => Boat::query()->forAssociation($request->user()->association_id)->with('configurations')->orderBy('name')->get(),
-            'stages' => $this->stageOptions($request->user()->association_id),
         ]);
     }
 
@@ -94,7 +92,7 @@ class OutingController extends Controller
     {
         $outing->load([
             'creator',
-            'raceStage.race',
+            'races',
             'crewPlans' => fn ($query) => $query->with(['boat', 'configuration.positions.crewRole', 'assignments.position', 'assignments.member.crewRoles'])->orderBy('id'),
         ]);
 
@@ -145,12 +143,9 @@ class OutingController extends Controller
         return redirect()->route('outings.show', $outing);
     }
 
-    public function edit(Request $request, Outing $outing): View
+    public function edit(Outing $outing): View
     {
-        return view('outings.edit', [
-            'outing' => $outing,
-            'stages' => $this->stageOptions($request->user()->association_id),
-        ]);
+        return view('outings.edit', ['outing' => $outing]);
     }
 
     public function update(OutingRequest $request, Outing $outing): RedirectResponse
@@ -165,17 +160,5 @@ class OutingController extends Controller
         $outing->delete();
 
         return redirect()->route('outings.index')->with('status', 'Sortie supprimée');
-    }
-
-    /** @return array<int, string> stage id => "Race · Étape n" */
-    private function stageOptions(int $associationId): array
-    {
-        return RaceStage::query()
-            ->whereHas('race', fn ($query) => $query->forAssociation($associationId))
-            ->with('race')
-            ->orderByDesc('date')
-            ->get()
-            ->mapWithKeys(fn (RaceStage $stage) => [$stage->id => "{$stage->race->name} · {$stage->name}"])
-            ->all();
     }
 }

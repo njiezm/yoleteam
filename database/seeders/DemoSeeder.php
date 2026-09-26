@@ -6,10 +6,10 @@ use App\Enums\AttendanceStatus;
 use App\Enums\BwaPlacement;
 use App\Enums\CrewPlanStatus;
 use App\Enums\Gender;
-use App\Enums\MemberCategory;
 use App\Enums\MemberLevel;
 use App\Enums\OutingStatus;
 use App\Enums\OutingType;
+use App\Enums\RaceOutcome;
 use App\Enums\RaceType;
 use App\Enums\UserRole;
 use App\Models\Association;
@@ -137,7 +137,8 @@ class DemoSeeder extends Seeder
         return collect($rows)->map(function (array $row) use ($association, $roleIds) {
             [$first, $last, $nick, $gender, $weight, $height, $level, $year, $roles] = $row;
             $birth = Carbon::create($year, mt_rand(1, 12), mt_rand(1, 28));
-            $age = $birth->age;
+            // Deterministic starting year: most members began the yole in their teens or twenties.
+            $yoleSince = min(today()->year, $year + 12 + (crc32($first.$last) % 14));
 
             $member = $association->members()->create([
                 'first_name' => $first,
@@ -150,11 +151,7 @@ class DemoSeeder extends Seeder
                 'weight_kg' => $weight,
                 'height_cm' => $height,
                 'level' => MemberLevel::from($level),
-                'category' => match (true) {
-                    $age < 21 => MemberCategory::Jeune,
-                    $age >= 45 => MemberCategory::Veteran,
-                    default => MemberCategory::Senior,
-                },
+                'yole_since_year' => $yoleSince,
                 'is_active' => true,
             ]);
 
@@ -174,7 +171,7 @@ class DemoSeeder extends Seeder
         $specs = [
             [-12, OutingType::Entrainement, 'Entraînement du samedi', '06:00', '09:00', 'Baie des Mulets'],
             [-9, OutingType::Entrainement, 'Entraînement virements', '17:00', '19:00', 'Baie des Mulets'],
-            [-5, OutingType::SortieLibre, 'Sortie jusqu’à la Pointe Faula', '07:00', '12:00', 'Pointe Faula'],
+            [-5, OutingType::Entrainement, 'Sortie jusqu’à la Pointe Faula', '07:00', '12:00', 'Pointe Faula'],
             [-2, OutingType::Entrainement, 'Entraînement vitesse au largue', '06:00', '09:00', 'Baie des Mulets'],
             [3, OutingType::Entrainement, 'Entraînement du samedi', '06:00', '09:00', 'Baie des Mulets'],
             [10, OutingType::Regate, 'Régate du Vauclin', '08:00', '13:00', 'Baie du Vauclin'],
@@ -196,9 +193,70 @@ class DemoSeeder extends Seeder
             ]);
         });
 
+        // Distance sailed on the Pointe Faula outing: duration and average speed show on its page.
+        $outings[2]->update([
+            'distance_nm' => 14.5,
+            'notes_before' => 'Alizé bien établi, équipage au complet.',
+            'notes_after' => 'Belle vitesse au portant, virements encore lents.',
+        ]);
+
         $past = $outings->filter(fn (Outing $o) => $o->date->isPast())->values();
 
+        $this->seedResults($association, $creator);
+
         return ['past' => $past, 'plan' => $past->last()];
+    }
+
+    /**
+     * Race days with their manches and rankings, and one TDY stage, so the statistics page has data.
+     */
+    private function seedResults(Association $association, User $creator): void
+    {
+        // [jours, titre, lieu, [[place, résultat, points D]], place journée, classement général]
+        $raceDays = [
+            [-40, 'Régate du Robert', 'Baie du Robert', [[3, RaceOutcome::Classe], [5, RaceOutcome::Classe], [null, RaceOutcome::Coule]], 4, 5],
+            [-26, 'Régate de Sainte-Luce', 'Sainte-Luce', [[2, RaceOutcome::Classe], [1, RaceOutcome::Classe], [4, RaceOutcome::Classe]], 2, 3],
+            [-16, 'Régate du François', 'Le François', [[6, RaceOutcome::Classe], [null, RaceOutcome::Disqualifie, 12], [3, RaceOutcome::Classe]], 5, 3],
+        ];
+
+        foreach ($raceDays as [$offset, $title, $location, $races, $dayRank, $generalRank]) {
+            $outing = $association->outings()->create([
+                'type' => OutingType::Regate,
+                'title' => $title,
+                'date' => today()->addDays($offset),
+                'start_time' => '08:00',
+                'end_time' => '13:00',
+                'location' => $location,
+                'status' => OutingStatus::Terminee,
+                'day_rank' => $dayRank,
+                'general_rank' => $generalRank,
+                'created_by' => $creator->id,
+            ]);
+
+            foreach ($races as $index => $race) {
+                [$place, $outcome] = $race;
+                $outing->races()->create([
+                    'number' => $index + 1,
+                    'place' => $place,
+                    'result' => $outcome,
+                    'points' => $outcome->points($place, $race[2] ?? null),
+                ]);
+            }
+        }
+
+        $association->outings()->create([
+            'type' => OutingType::Tdy,
+            'title' => 'Tour des yoles · Sainte-Anne → Le Vauclin',
+            'date' => today()->addDays(-55),
+            'start_time' => '09:00',
+            'end_time' => '12:30',
+            'location' => 'Sainte-Anne',
+            'distance_nm' => 16.0,
+            'status' => OutingStatus::Terminee,
+            'stage_rank' => 6,
+            'general_rank' => 6,
+            'created_by' => $creator->id,
+        ]);
     }
 
     /**

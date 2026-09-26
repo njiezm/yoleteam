@@ -53,14 +53,14 @@ class HistoryTest extends TestCase
 
     public function test_guests_are_redirected_to_login(): void
     {
-        $this->get(route('history.index'))->assertRedirect(route('login'));
+        $this->get(route('attendance.stats'))->assertRedirect(route('login'));
     }
 
     public function test_index_shows_kpis_grid_and_rankings_for_the_last_30_days(): void
     {
         $this->signInPatron($this->association);
 
-        $this->get(route('history.index'))
+        $this->get(route('attendance.stats'))
             ->assertOk()
             ->assertViewHas('overall', fn (array $overall) => $overall['rate'] === 50 && $overall['retard'] === 1 && $overall['absent'] === 1)
             ->assertViewHas('unexcusedMembers', 1)
@@ -83,12 +83,12 @@ class HistoryTest extends TestCase
     {
         $this->signInAdmin($this->association);
 
-        $this->get(route('history.index', ['period' => 'season']))
+        $this->get(route('attendance.stats', ['period' => 'season']))
             ->assertOk()
             ->assertSee('15/03')
             ->assertViewHas('overall', fn (array $overall) => $overall['total'] === 6);
 
-        $this->get(route('history.index', ['period' => 'season', 'type' => 'regate']))
+        $this->get(route('attendance.stats', ['period' => 'season', 'type' => 'regate']))
             ->assertOk()
             ->assertSee('15/03')
             ->assertDontSee('19/09')
@@ -100,7 +100,7 @@ class HistoryTest extends TestCase
     {
         $this->signInAdmin();
 
-        $this->get(route('history.index'))
+        $this->get(route('attendance.stats'))
             ->assertOk()
             ->assertSee('Aucun appel sur la période');
     }
@@ -109,7 +109,7 @@ class HistoryTest extends TestCase
     {
         $this->signInAdmin();
 
-        $this->get(route('history.index', ['period' => 'season']))
+        $this->get(route('attendance.stats', ['period' => 'season']))
             ->assertOk()
             ->assertDontSee('Alice A.')
             ->assertViewHas('outings', fn ($outings) => $outings->isEmpty());

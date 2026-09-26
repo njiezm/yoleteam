@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\Gender;
-use App\Enums\MemberCategory;
 use App\Enums\MemberLevel;
 use App\Models\Concerns\BelongsToAssociation;
 use App\Models\Concerns\HasClientUuid;
@@ -20,7 +19,7 @@ use Illuminate\Support\Collection;
 
 #[Fillable([
     'association_id', 'uuid', 'first_name', 'last_name', 'nickname', 'photo_path', 'phone', 'email',
-    'birth_date', 'gender', 'weight_kg', 'height_cm', 'level', 'category', 'is_active', 'notes',
+    'birth_date', 'gender', 'weight_kg', 'height_cm', 'level', 'yole_since_year', 'is_active', 'notes',
 ])]
 class Member extends Model
 {
@@ -35,7 +34,7 @@ class Member extends Model
             'weight_kg' => 'decimal:1',
             'height_cm' => 'integer',
             'level' => MemberLevel::class,
-            'category' => MemberCategory::class,
+            'yole_since_year' => 'integer',
             'is_active' => 'boolean',
         ];
     }
@@ -91,6 +90,34 @@ class Member extends Model
     public function formattedWeight(): ?string
     {
         return $this->weight_kg === null ? null : str_replace('.', ',', (string) (float) $this->weight_kg);
+    }
+
+    /** Age in full years from the birth date, or null when unknown. */
+    public function age(): ?int
+    {
+        return $this->birth_date?->age;
+    }
+
+    /** Number of years practising yole (current year − starting year), or null when unknown. */
+    public function yoleYears(): ?int
+    {
+        return $this->yole_since_year === null ? null : max(0, today()->year - $this->yole_since_year);
+    }
+
+    /** "12 ans de yole" / "1 an de yole", or null when unknown. */
+    public function formattedYoleYears(): ?string
+    {
+        $years = $this->yoleYears();
+
+        return $years === null ? null : ($years < 1 ? 'Première année de yole' : $years.' '.($years > 1 ? 'ans' : 'an').' de yole');
+    }
+
+    /** "34 ans", or null when the birth date is unknown. */
+    public function formattedAge(): ?string
+    {
+        $age = $this->age();
+
+        return $age === null ? null : $age.' '.($age > 1 ? 'ans' : 'an');
     }
 
     /** @return BelongsToMany<CrewRole, $this> */

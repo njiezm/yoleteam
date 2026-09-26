@@ -13,6 +13,9 @@ use Illuminate\View\View;
 
 class LoginController extends Controller
 {
+    /** 400 days: the longest cookie lifetime browsers accept. */
+    public const REMEMBER_MINUTES = 576000;
+
     public function create(): View
     {
         return view('auth.login');
@@ -31,6 +34,9 @@ class LoginController extends Controller
 
             return ! $disabled;
         };
+
+        // "Rester connecté": the remember cookie lasts 400 days, the maximum browsers accept.
+        Auth::guard('web')->setRememberDuration(self::REMEMBER_MINUTES);
 
         // The callback only runs once the password matched, so "disabled" never reveals an unknown account.
         if (! Auth::attemptWhen($credentials, $isActive, $request->boolean('remember'))) {

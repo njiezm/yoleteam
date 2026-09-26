@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Enums\Gender;
-use App\Enums\MemberCategory;
 use App\Enums\MemberLevel;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -40,7 +39,7 @@ class MemberRequest extends FormRequest
             'weight_kg' => ['nullable', 'numeric', 'between:30,150'],
             'height_cm' => ['nullable', 'integer', 'between:100,220'],
             'level' => ['required', Rule::enum(MemberLevel::class)],
-            'category' => ['nullable', Rule::enum(MemberCategory::class)],
+            'yole_since_year' => ['nullable', 'integer', 'min:1950', 'max:'.now()->year],
             'roles' => ['nullable', 'array'],
             'roles.*' => ['integer', 'distinct', Rule::exists('crew_roles', 'id')],
             'preferred' => ['nullable', 'array'],
@@ -61,6 +60,7 @@ class MemberRequest extends FormRequest
             'preferred' => 'postes préférés',
             'preferred.*' => 'poste préféré',
             'is_active' => 'membre actif',
+            'yole_since_year' => 'année de début de la yole',
         ];
     }
 

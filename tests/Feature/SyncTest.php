@@ -337,6 +337,28 @@ class SyncTest extends TestCase
         $this->assertNotSoftDeleted($this->outing);
     }
 
+    public function test_results_entered_offline_are_replayed(): void
+    {
+        $this->outing->update(['type' => 'regate']);
+        $foreign = Outing::factory()->regate()->create();
+
+        $this->push([
+            $this->formOperation('PUT', route('outings.results.update', $this->outing, false), [
+                '_method' => 'PUT',
+                'races' => ['0' => ['place' => '2', 'result' => 'classe'], '1' => ['result' => 'avarie'], '2' => ['place' => '', 'result' => 'classe']],
+                'day_rank' => '3',
+                'general_rank' => '4',
+            ]),
+            $this->formOperation('PUT', route('outings.results.update', $foreign, false), ['day_rank' => '1']),
+        ])->assertJsonPath('results.0.status', 'applied')->assertJsonPath('results.1.status', 'rejected');
+
+        $outing = $this->outing->fresh()->load('races');
+        $this->assertSame([2, 16], $outing->races->pluck('points')->all());
+        $this->assertSame(18, $outing->combiPoints());
+        $this->assertSame(3, $outing->day_rank);
+        $this->assertNull($foreign->fresh()->day_rank);
+    }
+
     public function test_outing_created_offline_receives_its_appel_and_plans_in_the_same_batch(): void
     {
         $this->seed(CrewRoleSeeder::class);

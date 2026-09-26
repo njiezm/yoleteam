@@ -37,7 +37,7 @@
                                     <span class="chip bg-amber-100 text-amber-800 shrink-0">Indisponible</span>
                                 @endif
                             </div>
-                            <p class="text-sm muted truncate">{{ $boat->sponsor ?: 'Sans sponsor' }}</p>
+                            <p class="text-sm muted truncate">{{ $boat->hull_color ? 'Coque '.$boat->hull_color : 'Yole ronde' }}</p>
                             <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
                                 <div>
                                     <dt class="text-[11px] font-bold uppercase muted">Longueur</dt>

@@ -3,7 +3,7 @@
     $types = [
         \App\Enums\OutingType::Entrainement->value => ['Entraînement', 'calendar'],
         \App\Enums\OutingType::Regate->value => ['Course', 'trophy'],
-        \App\Enums\OutingType::SortieLibre->value => ['Sortie libre', 'boat'],
+        \App\Enums\OutingType::Tdy->value => ['TDY (Tour des yoles)', 'boat'],
     ];
     $currentType = old('type', $outing->type?->value ?? \App\Enums\OutingType::Entrainement->value);
 @endphp
@@ -66,15 +66,27 @@
 </section>
 
 <section class="card p-5 lg:p-6 grid sm:grid-cols-2 gap-4">
-    <x-field label="Rattacher à une étape de régate" name="race_stage_id">
-        <x-select name="race_stage_id" :options="$stages" :value="$outing->race_stage_id" placeholder="— Aucune —" />
-    </x-field>
     @isset($statusField)
         <x-field label="Statut" name="status">
             <x-select name="status" :options="\App\Enums\OutingStatus::options()" :value="$outing->status" />
         </x-field>
     @endisset
     <x-field label="Consignes" name="notes" class="sm:col-span-2">
-        <textarea id="notes" name="notes" rows="3" class="input" placeholder="Objectifs de la séance, matériel…">{{ old('notes', $outing->notes) }}</textarea>
+        <textarea id="notes" name="notes" rows="3" maxlength="2000" @class(['input', 'input-error' => $errors->has('notes')]) placeholder="Objectifs de la séance, matériel…">{{ old('notes', $outing->notes) }}</textarea>
     </x-field>
+</section>
+
+<section class="card p-5 lg:p-6">
+    <h3 class="font-bold mb-1 flex items-center gap-2"><x-icon name="edit" class="w-4 h-4" />Impressions & navigation</h3>
+    <p class="text-xs muted mb-4">Facultatif — l’heure de fin et la distance peuvent être saisies au retour : la durée et la vitesse moyenne sont alors calculées.</p>
+    <div class="grid sm:grid-cols-3 gap-4">
+        @foreach (['notes_before' => ['Impressions avant la sortie', 'Forme de l’équipage, météo annoncée…'], 'notes_during' => ['Pendant', 'Manœuvres, incidents, sensations…'], 'notes_after' => ['Après', 'Bilan, points à retravailler…']] as $field => [$label, $placeholder])
+            <x-field :label="$label" :name="$field">
+                <textarea id="{{ $field }}" name="{{ $field }}" rows="4" maxlength="5000" @class(['input', 'input-error' => $errors->has($field)]) placeholder="{{ $placeholder }}">{{ old($field, $outing->{$field}) }}</textarea>
+            </x-field>
+        @endforeach
+        <x-field label="Distance parcourue (milles)" name="distance_nm">
+            <x-input name="distance_nm" type="number" min="0" max="9999.9" step="0.1" inputmode="decimal" :value="$outing->distance_nm !== null ? (float) $outing->distance_nm : null" placeholder="8,5" />
+        </x-field>
+    </div>
 </section>

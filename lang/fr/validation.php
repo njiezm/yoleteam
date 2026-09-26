@@ -23,6 +23,7 @@ return [
     'digits' => 'Le champ :attribute doit contenir :digits chiffres.',
     'distinct' => 'Le champ :attribute contient une valeur en double.',
     'email' => 'Le champ :attribute doit être une adresse e-mail valide.',
+    'enum' => 'La valeur sélectionnée pour :attribute est invalide.',
     'exists' => 'La valeur sélectionnée pour :attribute est invalide.',
     'file' => 'Le champ :attribute doit être un fichier.',
     'filled' => 'Le champ :attribute doit avoir une valeur.',

@@ -8,10 +8,10 @@
             <x-input name="email" type="email" :value="$email" autocomplete="username" required />
         </x-field>
         <x-field label="Nouveau mot de passe" name="password">
-            <input id="password" name="password" type="password" autocomplete="new-password" required class="input @error('password') input-error @enderror">
+            <x-password-input name="password" autocomplete="new-password" required />
         </x-field>
         <x-field label="Confirmation" name="password_confirmation">
-            <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" required class="input">
+            <x-password-input name="password_confirmation" autocomplete="new-password" required />
         </x-field>
         <button class="btn-primary w-full h-12">Enregistrer le mot de passe</button>
     </form>

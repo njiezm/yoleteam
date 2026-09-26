@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\OutingStatus;
+use App\Enums\OutingType;
 use App\Models\Association;
 use App\Models\Boat;
 use App\Models\Member;
@@ -10,6 +11,7 @@ use App\Models\Outing;
 use App\Services\BoatLayoutGenerator;
 use Database\Seeders\CrewRoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -133,6 +135,72 @@ class OutingTest extends TestCase
         $this->put(route('outings.update', $outing), [
             'type' => 'entrainement', 'title' => 'Vent fort', 'date' => today()->toDateString(), 'status' => 'planifiee', 'sea_state' => 'tempete', 'swell_m' => 40,
         ])->assertSessionHasErrors(['sea_state', 'swell_m']);
+    }
+
+    public function test_tdy_replaces_the_free_outing_type(): void
+    {
+        $user = $this->signInPatron();
+
+        $this->post(route('outings.store'), ['type' => 'tdy', 'title' => 'Étape 1', 'date' => today()->toDateString()])->assertRedirect();
+        $this->assertSame(OutingType::Tdy, Outing::sole()->type);
+        $this->get(route('outings.show', Outing::sole()))->assertOk()->assertSee('TDY (Tour des yoles)');
+
+        $this->post(route('outings.store'), ['type' => 'sortie_libre', 'title' => 'Balade', 'date' => today()->toDateString()])
+            ->assertSessionHasErrors('type');
+
+        $legacy = Outing::factory()->for($user->association)->create();
+        DB::table('outings')->where('id', $legacy->id)->update(['type' => 'sortie_libre']);
+        (require database_path('migrations/2026_09_26_095542_rename_sortie_libre_outings_to_tdy.php'))->up();
+        $this->assertSame(OutingType::Tdy, $legacy->fresh()->type);
+    }
+
+    public function test_impressions_and_distance_are_saved_with_duration_and_average_speed(): void
+    {
+        $user = $this->signInPatron();
+        $outing = Outing::factory()->for($user->association)->create(['start_time' => '06:00', 'end_time' => null]);
+
+        $this->get(route('outings.show', $outing))
+            ->assertOk()
+            ->assertSee('Notes & navigation')
+            ->assertSee('L’heure de fin et la distance peuvent être saisies après la sortie');
+        $this->get(route('outings.edit', $outing))
+            ->assertOk()
+            ->assertSee(['Impressions avant la sortie', 'Distance parcourue (milles)'])
+            ->assertDontSee('Rattacher à une étape de régate');
+
+        $this->put(route('outings.update', $outing), [
+            'type' => 'entrainement', 'title' => 'Tour de la baie', 'date' => today()->toDateString(), 'status' => 'terminee',
+            'start_time' => '06:00', 'end_time' => '08:30', 'distance_nm' => '12.5', 'notes' => 'Travail des virements',
+            'notes_before' => 'Mer formée annoncée', 'notes_during' => 'Belle glisse au largue', 'notes_after' => 'Virements à reprendre',
+        ])->assertRedirect(route('outings.show', $outing));
+
+        $outing->refresh();
+        $this->assertSame(150, $outing->durationMinutes());
+        $this->assertSame(5.0, $outing->averageSpeedKnots());
+
+        $this->get(route('outings.show', $outing))
+            ->assertOk()
+            ->assertSee(['2 h 30', '12,5 milles', '5,0 nœuds', 'Travail des virements', 'Mer formée annoncée', 'Belle glisse au largue', 'Virements à reprendre'])
+            ->assertDontSee('L’heure de fin et la distance peuvent être saisies après la sortie');
+
+        $this->put(route('outings.update', $outing), [
+            'type' => 'entrainement', 'title' => 'Tour de la baie', 'date' => today()->toDateString(), 'status' => 'terminee', 'distance_nm' => '-3',
+        ])->assertSessionHasErrors('distance_nm');
+    }
+
+    public function test_duration_and_speed_need_both_times_and_a_distance(): void
+    {
+        $outing = Outing::factory()->make(['start_time' => '06:00:00', 'end_time' => '09:00:00', 'distance_nm' => null]);
+        $this->assertSame('3 h', $outing->durationLabel());
+        $this->assertNull($outing->averageSpeedKnots());
+
+        $outing->end_time = '06:45';
+        $this->assertSame('45 min', $outing->durationLabel());
+
+        $outing->end_time = null;
+        $outing->distance_nm = 8;
+        $this->assertNull($outing->durationLabel());
+        $this->assertNull($outing->averageSpeedKnots());
     }
 
     public function test_crew_plan_editor_takes_the_outing_wind_by_default(): void

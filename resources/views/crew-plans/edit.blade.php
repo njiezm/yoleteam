@@ -15,5 +15,7 @@
         </div>
     </x-slot:sticky>
 
+    <x-outing-picker :current="$outing" target="plans" class="mb-4 max-w-xl" />
+
     @include('crew-plans._editor', ['inline' => false])
 </x-layouts.app>

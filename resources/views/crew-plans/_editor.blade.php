@@ -84,7 +84,7 @@
                 <p class="text-sm muted mt-1" data-validate-summary></p>
                 <div class="mt-4 rounded-xl bg-slate-50 p-3 text-sm space-y-1.5">
                     <p class="flex justify-between"><span class="muted">Bwa au vent</span><b data-validate-sides></b></p>
-                    <p class="flex justify-between"><span class="muted">Avant / arrière</span><b data-validate-ends></b></p>
+                    <p class="flex justify-between"><span class="muted">Poids à bord</span><b data-validate-ends></b></p>
                 </div>
                 <div class="grid grid-cols-2 gap-2 mt-5">
                     <button type="button" data-action="close-modal" class="btn-ghost">Annuler</button>

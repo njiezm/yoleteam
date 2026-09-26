@@ -54,59 +54,70 @@ class BoatLayoutGenerator
         ], fn ($value) => $value !== null)];
 
         $positions = [];
+        $step = 4.6; // vertical room of one seat (a name tag) in drawing units
 
-        // Avant : cordes (2 voiles).
-        foreach (array_slice([['premiere_corde', '1ère corde', 5], ['deuxieme_corde', '2ème corde', 20]], 0, min(2, $counts['cordes_count'])) as [$code, $label, $y]) {
-            $positions[] = $this->position($code === 'premiere_corde' ? CrewRole::PREMIERE_CORDE : CrewRole::DEUXIEME_CORDE, $code, $label, BoatSide::Centre, null, 50, $y);
+        // Avant : 1ère corde tout à l'avant, 2ème corde juste derrière (2 voiles).
+        $cordes = [[CrewRole::PREMIERE_CORDE, 'premiere_corde', '1ère corde'], [CrewRole::DEUXIEME_CORDE, 'deuxieme_corde', '2ème corde']];
+        foreach (array_slice($cordes, 0, min(2, $counts['cordes_count'])) as $index => [$role, $code, $label]) {
+            $positions[] = $this->position($role, $code, $label, BoatSide::Centre, null, 50, 5 + $index * $step);
         }
 
-        // Écoutes : une paire par voile (petite voile à l'avant, grande voile au milieu).
+        // Écoutes : au niveau de chaque voile, sous le vent (stored on the tribord side, mirrored by the drawing
+        // when the bwa dressés sail tribord). Masts: 2 voiles at 15 and 38, misaine forward at 14.
         $ecoutes = max(1, $counts['ecoute_count']);
         $sheets = $sails >= 2
-            ? [['ecoute_pv', 'Écoute petite voile', 33, intdiv($ecoutes, 2)], ['ecoute_gv', 'Écoute grande voile', 48, $ecoutes - intdiv($ecoutes, 2)]]
-            : [['ecoute', 'Écoute', 36, $ecoutes]];
-
-        foreach ($sheets as [$prefix, $label, $y, $count]) {
+            ? [['ecoute_pv', 'Écoute petite voile', 15, intdiv($ecoutes, 2)], ['ecoute_gv', 'Écoute grande voile', 38, $ecoutes - intdiv($ecoutes, 2)]]
+            : [['ecoute', 'Écoute', 14, $ecoutes]];
+        $lastSheetY = 0;
+        foreach ($sheets as [$prefix, $label, $mastY, $count]) {
             for ($i = 1; $i <= $count; $i++) {
-                $x = $count === 1 ? 50 : 50 + (($i - 1) % 2 === 0 ? -8 : 8);
-                $positions[] = $this->position(CrewRole::ECOUTE, "{$prefix}_{$i}", $count === 1 ? $label : "{$label} {$i}", BoatSide::Centre, null, $x, $y + intdiv($i - 1, 2) * 7);
+                $y = $mastY + 4 + ($i - 1) * $step;
+                $lastSheetY = max($lastSheetY, $y);
+                $positions[] = $this->position(CrewRole::ECOUTE, "{$prefix}_{$i}", $count === 1 ? $label : "{$label} {$i}", BoatSide::Tribord, null, 62, $y);
             }
         }
 
         // Bwa dressés : tous au vent, du plus avant (1) au plus arrière.
         $bwa = max(1, $counts['bwa_count']);
-        [$first, $last] = $sails >= 2 ? [24.0, 80.0] : [20.0, 80.0];
+        [$first, $last] = $sails >= 2 ? [24.0, 78.0] : [20.0, 78.0];
+        $bwaYs = [];
         for ($i = 1; $i <= $bwa; $i++) {
-            $y = $bwa > 1 ? $first + ($i - 1) * ($last - $first) / ($bwa - 1) : ($first + $last) / 2;
+            $y = round($bwa > 1 ? $first + ($i - 1) * ($last - $first) / ($bwa - 1) : ($first + $last) / 2, 2);
+            $bwaYs[] = $y;
             // The first dresseur is "les yeux du patron"; the last one stays in rappel longest when tacking.
             $label = "Bwa dressé {$i}".match (true) {
                 $bwa > 1 && $i === 1 => ' (premier)',
                 $bwa > 1 && $i === $bwa => ' (dernier)',
                 default => '',
             };
-            $positions[] = $this->position(CrewRole::DRESSEUR, "bwa_{$i}", $label, BoatSide::Babord, $i, self::BABORD_X, round($y, 2));
+            $positions[] = $this->position(CrewRole::DRESSEUR, "bwa_{$i}", $label, BoatSide::Babord, $i, self::BABORD_X, $y);
         }
 
-        // Fonds / écopeurs : le plan d'équipage choisit combien de places sont utilisées.
-        $fondStart = $sails >= 2 ? 57 : 50;
-        for ($i = 1; $i <= self::MAX_FONDS; $i++) {
-            $positions[] = $this->position(CrewRole::ECOPEUR, "fond_{$i}", "Fond / écopeur {$i}", BoatSide::Centre, null, 50, $fondStart + ($i - 1) * 7, true);
+        // Fonds / écopeurs : dans l'axe, entre deux bwa (not on a pole), aft of the sheets. The crew plan chooses
+        // how many of these places are used.
+        $fondYs = [];
+        for ($i = 1; $i < count($bwaYs); $i++) {
+            $middle = round(($bwaYs[$i - 1] + $bwaYs[$i]) / 2, 2);
+            if ($middle > $lastSheetY + $step * 0.9) {
+                $fondYs[] = $middle;
+            }
+        }
+        while (count($fondYs) < self::MAX_FONDS) {
+            $fondYs[] = round((end($fondYs) ?: $lastSheetY) + $step, 2);
+        }
+        foreach (array_slice($fondYs, 0, self::MAX_FONDS) as $index => $y) {
+            $positions[] = $this->position(CrewRole::ECOPEUR, 'fond_'.($index + 1), 'Fond / écopeur '.($index + 1), BoatSide::Centre, null, 50, $y, true);
         }
 
-        // Arrière : pagaies puis patron.
+        // Arrière, après les bwa : les pagaies alignées dans l'axe, puis le patron tout à l'arrière.
         $pagaies = min(3, max(0, $counts['pagaie_count']));
-        $pagaieX = match ($pagaies) {
-            1 => [50],
-            2 => [40, 60],
-            3 => [36, 50, 64],
-            default => [],
-        };
-        foreach ($pagaieX as $index => $x) {
-            $side = $x < 50 ? BoatSide::Babord : ($x > 50 ? BoatSide::Tribord : BoatSide::Centre);
-            $positions[] = $this->position(CrewRole::AIDE_PATRON, 'aide_patron_'.($index + 1), $pagaies === 1 ? 'Pagaie' : 'Pagaie '.($index + 1), $side, null, $x, 83);
+        $y = $last + 4.5;
+        for ($i = 1; $i <= $pagaies; $i++) {
+            $positions[] = $this->position(CrewRole::AIDE_PATRON, "aide_patron_{$i}", $pagaies === 1 ? 'Pagaie' : "Pagaie {$i}", BoatSide::Centre, null, 50, $y);
+            $y += $step;
         }
 
-        $positions[] = $this->position(CrewRole::PATRON, 'patron', 'Patron', BoatSide::Centre, null, 50, 94);
+        $positions[] = $this->position(CrewRole::PATRON, 'patron', 'Patron', BoatSide::Centre, null, 50, max(94.0, $y));
 
         return $positions;
     }

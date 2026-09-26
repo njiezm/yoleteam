@@ -6,7 +6,7 @@
     $level = (string) old('level', $member->level?->value);
     $isActive = $hasOld ? (bool) old('is_active') : (bool) $member->is_active;
 @endphp
-<form id="member-form" method="POST" action="{{ $action }}" class="max-w-4xl space-y-5" data-offline-form="{{ $method === 'PUT' ? 'Membre modifié : '.$member->full_name : 'Nouveau membre' }}" data-offline-redirect="{{ route('members.index') }}">
+<form id="member-form" data-member-form method="POST" action="{{ $action }}" class="max-w-4xl space-y-5" data-offline-form="{{ $method === 'PUT' ? 'Membre modifié : '.$member->full_name : 'Nouveau membre' }}" data-offline-redirect="{{ route('members.index') }}">
     @csrf
     @if ($method !== 'POST')
         @method($method)
@@ -22,7 +22,12 @@
             <x-field label="Prénom *" name="first_name"><x-input name="first_name" :value="$member->first_name" required maxlength="100" autocomplete="off" /></x-field>
             <x-field label="Nom *" name="last_name"><x-input name="last_name" :value="$member->last_name" required maxlength="100" autocomplete="off" /></x-field>
             <x-field label="Surnom" name="nickname"><x-input name="nickname" :value="$member->nickname" maxlength="50" /></x-field>
-            <x-field label="Date de naissance" name="birth_date"><x-input name="birth_date" type="date" :value="$member->birth_date?->format('Y-m-d')" /></x-field>
+            <x-field label="Date de naissance" name="birth_date">
+                <div class="flex items-center gap-3">
+                    <x-input name="birth_date" type="date" :value="$member->birth_date?->format('Y-m-d')" max="{{ today()->subDay()->format('Y-m-d') }}" data-member-birth-date class="flex-1 min-w-0" />
+                    <span class="text-sm font-semibold text-slate-600 whitespace-nowrap min-w-14" data-member-age aria-live="polite">{{ $member->formattedAge() }}</span>
+                </div>
+            </x-field>
             <div class="sm:col-span-2">
                 <p class="label">Genre</p>
                 <div class="seg">
@@ -68,8 +73,8 @@
                     <p class="text-xs text-red-600 font-semibold mt-1.5">{{ $message }}</p>
                 @enderror
             </div>
-            <x-field label="Catégorie" name="category">
-                <x-select name="category" :options="\App\Enums\MemberCategory::options()" :value="$member->category" placeholder="—" />
+            <x-field label="Pratique la yole depuis (année)" name="yole_since_year" hint="Laisser vide si inconnu.">
+                <x-input name="yole_since_year" type="number" :value="$member->yole_since_year" min="1950" max="{{ today()->year }}" step="1" inputmode="numeric" placeholder="{{ today()->year - 5 }}" />
             </x-field>
         </div>
 

@@ -85,13 +85,9 @@
             @endforelse
 
             <div class="card p-4 sm:col-span-2">
-                <p class="font-bold mb-2 flex items-center gap-2"><x-icon name="scale" class="w-4 h-4" />Équilibre</p>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                    @foreach (['Bwa au vent ('.$balance['bwa_count'].')' => $balance['bwa'], 'Avant' => $balance['avant'], 'Arrière' => $balance['arriere'], 'Total' => $balance['total']] as $label => $weight)
-                        <div class="rounded-lg bg-slate-50 p-2"><p class="text-[10px] muted font-bold uppercase">{{ $label }}</p><p class="font-extrabold">{{ round($weight) }} kg</p></div>
-                    @endforeach
-                </div>
-                <p class="mt-2 text-[11px] muted">Indication basée sur les poids déclarés.</p>
+                <p class="font-bold flex items-center gap-2"><x-icon name="scale" class="w-4 h-4" />Poids à bord</p>
+                <p class="mt-1 text-2xl font-extrabold">{{ round($balance['total']) }} kg</p>
+                <p class="text-[11px] muted">{{ $balance['filled'] }} équipier(s) · poids déclarés</p>
             </div>
 
             @if ($plan->notes)

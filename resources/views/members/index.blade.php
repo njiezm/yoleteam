@@ -1,12 +1,21 @@
 <x-layouts.app title="Membres" :crumb="$activeCount.' membres actifs · saison '.today()->year">
-    @can('manage')
-        <x-slot:actions>
+    <x-slot:actions>
+        <a href="{{ route('members.export', $exportQuery) }}" class="btn-ghost btn-sm"><x-icon name="download" class="w-4 h-4" />Exporter Excel</a>
+        <a href="{{ route('members.print', $exportQuery) }}" target="_blank" class="btn-ghost btn-sm"><x-icon name="printer" class="w-4 h-4" />PDF</a>
+        @can('manage')
             <a href="{{ route('members.create') }}" class="btn-primary btn-sm"><x-icon name="plus" class="w-4 h-4" />Ajouter un membre</a>
-        </x-slot:actions>
+        @endcan
+    </x-slot:actions>
+    @can('manage')
         <x-slot:sticky>
             <a href="{{ route('members.create') }}" class="btn-primary w-full h-12"><x-icon name="plus" class="w-4 h-4" />Ajouter un membre</a>
         </x-slot:sticky>
     @endcan
+
+    <div class="lg:hidden grid grid-cols-2 gap-2 mb-3">
+        <a href="{{ route('members.export', $exportQuery) }}" class="btn-ghost btn-sm"><x-icon name="download" class="w-4 h-4" />Exporter Excel</a>
+        <a href="{{ route('members.print', $exportQuery) }}" target="_blank" class="btn-ghost btn-sm"><x-icon name="printer" class="w-4 h-4" />PDF</a>
+    </div>
 
     <form method="GET" action="{{ route('members.index') }}" class="flex flex-col lg:flex-row gap-3">
         @if ($filters['role'])
@@ -63,9 +72,7 @@
                                     <div>
                                         <p class="font-bold">{{ $member->full_name }}</p>
                                         <p class="text-xs muted">
-                                            @if ($member->nickname)« {{ $member->nickname }} »@endif
-                                            @if ($member->nickname && $member->category) · @endif
-                                            {{ $member->category?->label() }}
+                                            {{ implode(' · ', array_filter([$member->nickname ? '« '.$member->nickname.' »' : null, $member->formattedAge(), $member->formattedYoleYears()])) }}
                                             @unless ($member->is_active)<span class="chip bg-slate-100 text-slate-500 ml-1 py-0">Inactif</span>@endunless
                                         </p>
                                     </div>
@@ -105,6 +112,9 @@
                     <x-avatar :member="$member" />
                     <div class="flex-1 min-w-0">
                         <p class="font-bold truncate">{{ $member->full_name }}</p>
+                        @if ($member->birth_date || $member->yole_since_year !== null)
+                            <p class="text-xs muted truncate">{{ implode(' · ', array_filter([$member->formattedAge(), $member->formattedYoleYears()])) }}</p>
+                        @endif
                         <div class="flex items-center gap-1.5 mt-1">
                             @if ($primary)
                                 <x-role-pill :role="$primary" :preferred="$primary->pivot->is_preferred" />

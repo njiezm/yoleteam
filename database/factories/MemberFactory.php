@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Enums\Gender;
-use App\Enums\MemberCategory;
 use App\Enums\MemberLevel;
 use App\Models\Association;
 use App\Models\Member;
@@ -19,7 +18,6 @@ class MemberFactory extends Factory
         $faker = fake('fr_FR');
         $gender = $faker->randomElement([Gender::M, Gender::M, Gender::M, Gender::F]);
         $birth = $faker->dateTimeBetween('-60 years', '-15 years');
-        $age = (int) $birth->diff(now())->y;
 
         return [
             'association_id' => Association::factory(),
@@ -33,11 +31,7 @@ class MemberFactory extends Factory
             'weight_kg' => $faker->randomFloat(1, 55, 95),
             'height_cm' => $faker->numberBetween(160, 195),
             'level' => $faker->randomElement(MemberLevel::cases()),
-            'category' => match (true) {
-                $age < 21 => MemberCategory::Jeune,
-                $age >= 45 => MemberCategory::Veteran,
-                default => MemberCategory::Senior,
-            },
+            'yole_since_year' => $faker->optional(0.8)->numberBetween(max(1950, (int) $birth->format('Y') + 10), (int) now()->year),
             'is_active' => true,
         ];
     }

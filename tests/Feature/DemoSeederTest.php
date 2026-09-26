@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\OutingType;
 use App\Models\Association;
 use App\Models\CrewPlan;
+use App\Models\OutingRace;
 use App\Models\Race;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -24,6 +26,8 @@ class DemoSeederTest extends TestCase
         $this->assertTrue($association->boats()->where('name', 'Prixe – Midea')->exists());
         $this->assertTrue(CrewPlan::sole()->isValidated());
         $this->assertSame(8, Race::sole()->stages()->count());
+        $this->assertSame(9, OutingRace::count());
+        $this->assertTrue($association->outings()->where('type', OutingType::Tdy)->whereNotNull('stage_rank')->exists());
 
         $this->actingAs(User::where('email', 'patron@yoleteam.test')->sole())
             ->get(route('dashboard'))

@@ -10,12 +10,15 @@ use App\Http\Controllers\CrewPlanValidationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\MemberController;
+use App\Http\Controllers\OutingCalendarController;
 use App\Http\Controllers\OutingController;
+use App\Http\Controllers\OutingResultController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RaceResultController;
 use App\Http\Controllers\RaceStageController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\StatisticsController;
 use App\Http\Controllers\SuperAdmin\AssociationController as SuperAdminAssociationController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
@@ -46,9 +49,12 @@ Route::middleware('auth')->group(function () {
     // Sorties, appel et plans d'équipage (admin + patrons).
     Route::get('/sorties/hors-ligne', [OutingController::class, 'offline'])->name('outings.offline');
     Route::get('/sorties/par-identifiant/{uuid}', [OutingController::class, 'byUuid'])->whereUuid('uuid')->name('outings.by-uuid');
+    Route::get('/sorties/calendrier', OutingCalendarController::class)->name('outings.calendar');
     Route::resource('sorties', OutingController::class)
         ->parameters(['sorties' => 'outing'])
         ->names('outings');
+    Route::put('/sorties/{outing}/resultats', [OutingResultController::class, 'update'])->name('outings.results.update');
+    Route::get('/statistiques', [StatisticsController::class, 'index'])->name('statistics.index');
 
     Route::get('/appel', [AttendanceController::class, 'today'])->name('attendance.today');
     Route::get('/sorties/{outing}/appel', [AttendanceController::class, 'edit'])->name('attendance.edit');
@@ -71,10 +77,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/synchronisation', [SyncController::class, 'store'])->name('sync.store');
     Route::post('/synchronisation/{syncOperation}/resolution', [SyncController::class, 'resolve'])->name('sync.resolve');
 
-    Route::get('/historique', [HistoryController::class, 'index'])->name('history.index');
+    Route::get('/presences/statistiques', [HistoryController::class, 'index'])->name('attendance.stats');
+    Route::redirect('/historique', '/presences/statistiques')->name('history.index');
     Route::get('/historique/export', [HistoryController::class, 'export'])->name('history.export');
 
     // Consultation for everyone, management for admin / bureau (see Gate "manage").
+    Route::get('/membres/export', [MemberController::class, 'export'])->name('members.export');
+    Route::get('/membres/imprimer', [MemberController::class, 'print'])->name('members.print');
     Route::resource('membres', MemberController::class)
         ->parameters(['membres' => 'member'])
         ->names('members')

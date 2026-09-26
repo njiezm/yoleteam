@@ -179,18 +179,11 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
 
     function balanceCard(b) {
         const side = S.bwaSide === 'tribord' ? 'tribord' : 'bâbord';
-        const share = b.total ? Math.round((b.bwa / b.total) * 100) : 0;
         return `<div class="card p-4">
-            <div class="flex items-center justify-between"><p class="font-bold flex items-center gap-2">${icon('scale')}Équilibre</p>
+            <div class="flex items-center justify-between gap-2"><p class="font-bold flex items-center gap-2">${icon('scale')}Poids à bord</p>
               <span class="chip bg-slate-100 text-slate-700 whitespace-nowrap">Bwa au vent · ${side}</span></div>
-            <div class="mt-3 flex justify-between text-xs font-bold"><span>${b.bwaCount} bwa dressé(s) · ${kg(b.bwa)}</span><span>${share} % du poids</span></div>
-            <div class="mt-2 h-3 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full bg-emerald-500" style="width:${share}%"></div></div>
-            <div class="mt-3 grid grid-cols-3 gap-1.5 text-center text-sm">
-              <div class="rounded-lg bg-slate-50 p-2"><p class="text-[10px] muted font-bold uppercase">Avant</p><p class="font-extrabold whitespace-nowrap">${kg(b.avant)}</p></div>
-              <div class="rounded-lg bg-slate-50 p-2"><p class="text-[10px] muted font-bold uppercase">Arrière</p><p class="font-extrabold whitespace-nowrap">${kg(b.arriere)}</p></div>
-              <div class="rounded-lg bg-slate-50 p-2"><p class="text-[10px] muted font-bold uppercase">Total</p><p class="font-extrabold whitespace-nowrap">${kg(b.total)}</p></div>
-            </div>
-            <p class="mt-2 text-[11px] muted">Indication basée sur les poids déclarés — ne remplace pas l’œil du patron.</p>
+            <p class="mt-2 text-3xl font-extrabold tracking-tight">${kg(b.total)}</p>
+            <p class="text-xs muted">${b.filled} équipier(s) placé(s) · poids déclarés</p>
           </div>`;
     }
 
@@ -347,8 +340,8 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
                 const b = stats();
                 const modal = document.querySelector('[data-validate-modal]');
                 modal.querySelector('[data-validate-summary]').textContent = `${config().name} · ${b.filled}/${b.positions} postes · ${kg(b.total)} à bord. Le plan sera figé pour cette sortie (il reste modifiable en le rouvrant).`;
-                modal.querySelector('[data-validate-sides]').textContent = `${b.bwaCount} · ${kg(b.bwa)} (${S.bwaSide === 'tribord' ? 'tribord' : 'bâbord'})`;
-                modal.querySelector('[data-validate-ends]').textContent = `${kg(b.avant)} / ${kg(b.arriere)}`;
+                modal.querySelector('[data-validate-sides]').textContent = `${b.bwaCount} (${S.bwaSide === 'tribord' ? 'tribord' : 'bâbord'})`;
+                modal.querySelector('[data-validate-ends]').textContent = kg(b.total);
                 modal.querySelector('[data-validate-submit]').disabled = b.filled === 0;
                 modal.classList.replace('hidden', 'grid');
                 break;

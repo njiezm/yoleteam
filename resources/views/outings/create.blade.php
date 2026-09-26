@@ -25,7 +25,7 @@
                         <span class="w-3 h-8 rounded" style="background: {{ $boat->color() }}"></span>
                         <div class="flex-1 min-w-0">
                             <p class="font-bold">{{ $boat->name }}</p>
-                            <p class="text-xs muted">{{ $boat->is_active ? $boat->sponsor : 'Indisponible' }}</p>
+                            <p class="text-xs muted">{{ $boat->is_active ? 'Disponible' : 'Indisponible' }}</p>
                         </div>
                         @if ($boat->is_active && $boat->configurations->count() > 1)
                             <select name="configurations[{{ $boat->id }}]" class="input w-32 h-9">

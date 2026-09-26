@@ -7,70 +7,58 @@ use App\Enums\OutingType;
 use App\Models\Boat;
 use App\Models\Member;
 use App\Models\Outing;
-use App\Models\Race;
+use App\Services\AttendanceAlerts;
 use App\Services\AttendanceStats;
-use App\Services\CrewPlanPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, AttendanceStats $stats, CrewPlanPresenter $presenter): View
+    public function __invoke(Request $request, AttendanceStats $stats, AttendanceAlerts $alerts): View
     {
         $associationId = $request->user()->association_id;
         $activeMembers = Member::query()->forAssociation($associationId)->active()->count();
 
-        $current = Outing::current($associationId);
-        $current?->load(['crewPlans' => fn ($query) => $query->withCount('assignments'), 'crewPlans.boat', 'crewPlans.configuration.positions']);
-
-        $upcoming = Outing::query()
-            ->forAssociation($associationId)
-            ->with('crewPlans.boat')
-            ->where('status', '!=', OutingStatus::Annulee)
-            ->whereDate('date', '>=', today())
-            ->when($current, fn ($query) => $query->whereKeyNot($current->id))
-            ->orderBy('date')
-            ->limit(5)
-            ->get();
-
-        $recentOutings = Outing::query()
-            ->forAssociation($associationId)
-            ->where('status', '!=', OutingStatus::Annulee)
-            ->whereDate('date', '<=', today())
-            ->has('attendances')
-            ->orderByDesc('date')
-            ->limit(8)
-            ->get()
-            ->reverse()
-            ->values()
-            ->map(fn (Outing $outing) => ['outing' => $outing, 'rate' => $stats->forOuting($outing)['rate'] ?? 0]);
-
-        $nextRegatta = Outing::query()
-            ->forAssociation($associationId)
-            ->where('type', OutingType::Regate)
-            ->where('status', '!=', OutingStatus::Annulee)
-            ->whereDate('date', '>=', today())
-            ->orderBy('date')
-            ->first();
+        $training = $this->currentTraining($associationId);
+        $training?->load(['crewPlans' => fn ($query) => $query->withCount('assignments'), 'crewPlans.boat', 'crewPlans.configuration.positions']);
 
         return view('dashboard', [
             'offlineUrls' => $this->offlineUrls($associationId),
-            'current' => $current,
-            'currentCounts' => $current ? $stats->forOuting($current) : null,
+            'training' => $training,
+            'trainingCounts' => $training ? $stats->forOuting($training) : null,
             'activeMembers' => $activeMembers,
-            'upcoming' => $upcoming,
-            'recentOutings' => $recentOutings,
             'rate30' => $stats->overall($associationId, today()->subDays(30))['rate'],
             'outingsThisMonth' => Outing::query()->forAssociation($associationId)
                 ->where('status', '!=', OutingStatus::Annulee)
                 ->whereBetween('date', [today()->startOfMonth(), today()->endOfMonth()])
                 ->count(),
-            'nextRegatta' => $nextRegatta,
-            'racesThisSeason' => Race::query()->forAssociation($associationId)->where('season', today()->year)->count(),
+            'alerts' => $alerts->for($associationId),
+            'upcoming' => Outing::query()
+                ->forAssociation($associationId)
+                ->with('crewPlans.boat')
+                ->where('status', '!=', OutingStatus::Annulee)
+                ->whereDate('date', '>=', today())
+                ->when($training, fn ($query) => $query->whereKeyNot($training->id))
+                ->orderBy('date')
+                ->orderBy('start_time')
+                ->limit(4)
+                ->get(),
             'unavailableBoats' => Boat::query()->forAssociation($associationId)->where('is_active', false)->get(),
-            'presenter' => $presenter,
         ]);
+    }
+
+    /** Today's training, otherwise the next one, otherwise the latest one. */
+    private function currentTraining(int $associationId): ?Outing
+    {
+        $query = fn () => Outing::query()
+            ->forAssociation($associationId)
+            ->where('type', OutingType::Entrainement)
+            ->where('status', '!=', OutingStatus::Annulee);
+
+        return $query()->whereDate('date', today())->orderBy('start_time')->first()
+            ?? $query()->whereDate('date', '>', today())->orderBy('date')->orderBy('start_time')->first()
+            ?? $query()->whereDate('date', '<', today())->orderByDesc('date')->first();
     }
 
     /**
@@ -94,8 +82,8 @@ class DashboardController extends Controller
 
         return collect([
             $path('attendance.today'), $path('crew-plans.today'), $path('sync.index'),
-            $path('outings.index'), $path('outings.create'), $path('outings.offline'), $path('members.index'), $path('races.index'),
-            $path('boats.index'), $path('history.index'), $path('more'), $path('profile.edit'),
+            $path('outings.index'), $path('outings.create'), $path('outings.offline'), $path('members.index'),
+            $path('boats.index'), $path('attendance.stats'), $path('statistics.index'), $path('more'), $path('profile.edit'),
         ])
             ->when(Gate::allows('manage'), fn ($urls) => $urls->push($path('members.create')))
             ->concat($outings->flatMap(fn (Outing $outing) => [
@@ -105,7 +93,6 @@ class DashboardController extends Controller
                 ...$outing->crewPlans->map(fn ($plan) => $path('crew-plans.edit', [$outing, $plan])),
             ]))
             ->concat(Member::query()->forAssociation($associationId)->active()->pluck('id')->map(fn (int $id) => $path('members.show', $id)))
-            ->concat(Race::query()->forAssociation($associationId)->where('season', today()->year)->pluck('id')->map(fn (int $id) => $path('races.show', $id)))
             ->concat(Boat::query()->forAssociation($associationId)->where('is_active', true)->pluck('id')->map(fn (int $id) => $path('boats.show', $id)))
             ->values()
             ->all();

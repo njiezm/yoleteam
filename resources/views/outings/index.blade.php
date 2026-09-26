@@ -1,4 +1,4 @@
-<x-layouts.app title="Sorties" crumb="Entraînements, régates et sorties libres">
+<x-layouts.app title="Sorties" crumb="Entraînements, courses et TDY">
     <x-slot:actions>
         <a href="{{ route('outings.create') }}" class="btn-primary btn-sm"><x-icon name="plus" class="w-4 h-4" />Nouvelle sortie</a>
     </x-slot:actions>
@@ -11,7 +11,7 @@
         $end = $month->copy()->endOfMonth()->endOfWeek();
         $dotColor = fn ($outing) => match ($outing->type) {
             \App\Enums\OutingType::Regate => 'bg-sun-400',
-            \App\Enums\OutingType::SortieLibre => 'bg-sky-400',
+            \App\Enums\OutingType::Tdy => 'bg-sky-400',
             default => 'bg-navy-500',
         };
     @endphp
@@ -49,10 +49,21 @@
                 </a>
             @endfor
         </div>
-        <div class="flex gap-4 mt-3 text-[11px] muted">
-            <span class="flex items-center gap-1.5"><i class="w-2 h-2 rounded-full bg-navy-500"></i>Entraînement</span>
-            <span class="flex items-center gap-1.5"><i class="w-2 h-2 rounded-full bg-sun-400"></i>Course</span>
-            <span class="flex items-center gap-1.5"><i class="w-2 h-2 rounded-full bg-sky-400"></i>Sortie libre</span>
+        @php($printDate = today()->isSameMonth($month) ? today()->toDateString() : $month->toDateString())
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-3">
+            <div class="flex gap-4 text-[11px] muted">
+                <span class="flex items-center gap-1.5"><i class="w-2 h-2 rounded-full bg-navy-500"></i>Entraînement</span>
+                <span class="flex items-center gap-1.5"><i class="w-2 h-2 rounded-full bg-sun-400"></i>Course</span>
+                <span class="flex items-center gap-1.5"><i class="w-2 h-2 rounded-full bg-sky-400"></i>TDY</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <span class="text-[11px] font-bold uppercase muted flex items-center gap-1"><x-icon name="printer" class="w-3.5 h-3.5" />PDF</span>
+                <div class="seg">
+                    @foreach (['semaine' => 'Semaine', 'mois' => 'Mois', 'annee' => 'Année'] as $view => $label)
+                        <a href="{{ route('outings.calendar', ['vue' => $view, 'date' => $printDate]) }}" target="_blank" rel="noopener">{{ $label }}</a>
+                    @endforeach
+                </div>
+            </div>
         </div>
     </div>
 

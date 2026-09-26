@@ -115,7 +115,7 @@
                     </div>
                     <div>
                         <label class="label" for="user-password">Mot de passe *</label>
-                        <input id="user-password" name="password" type="password" required minlength="8" autocomplete="new-password" @class(['input', 'input-error' => $userErrors->has('password')])>
+                        <x-password-input id="user-password" name="password" required minlength="8" autocomplete="new-password" :invalid="$userErrors->has('password')" />
                         @include('boats._error', ['bag' => $userErrors, 'key' => 'password'])
                     </div>
                 </div>

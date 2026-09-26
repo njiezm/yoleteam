@@ -59,12 +59,12 @@ body { -webkit-font-smoothing: antialiased; }
 .yl-wind { font: 700 10px 'Plus Jakarta Sans', sans-serif; fill: #0B2545; }
 .yl-wind-s { font: 600 10px 'Plus Jakarta Sans', sans-serif; fill: #64748B; }
 .yl-init { font: 800 14px 'Plus Jakarta Sans', sans-serif; fill: #fff; }
-.yl-name { font: 700 10.5px 'Plus Jakarta Sans', sans-serif; fill: #fff; }
+.yl-name { font: 700 12px 'Plus Jakarta Sans', sans-serif; fill: #fff; }
 .yl-plus { font: 700 18px 'Plus Jakarta Sans', sans-serif; }
-.yl-short { font: 800 9px 'Plus Jakarta Sans', sans-serif; letter-spacing: .04em; }
+.yl-short { font: 800 10.5px 'Plus Jakarta Sans', sans-serif; letter-spacing: .04em; }
 .yl-pos:focus { outline: none; }
-.yl-pos:focus-visible circle { stroke: #F5B700; stroke-width: 4; }
-.yl-pos.drop-over circle { stroke: #F5B700 !important; stroke-width: 5 !important; }
+.yl-pos:focus-visible rect { stroke: #F5B700; stroke-width: 4; }
+.yl-pos.drop-over rect { stroke: #F5B700 !important; stroke-width: 4 !important; }
 
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .drag-ghost { opacity: .5; }

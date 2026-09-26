@@ -157,7 +157,6 @@
                 <section class="card p-5">
                     <h3 class="font-bold mb-3">Informations de la yole</h3>
                     <dl class="grid grid-cols-2 gap-4 text-sm">
-                        <div><dt class="text-[11px] font-bold uppercase muted">Sponsor</dt><dd class="font-bold">{{ $boat->sponsor ?: '—' }}</dd></div>
                         <div><dt class="text-[11px] font-bold uppercase muted">Longueur</dt><dd class="font-bold">{{ $boat->length_m !== null ? number_format((float) $boat->length_m, 2, ',', ' ').' m' : '—' }}</dd></div>
                         <div><dt class="text-[11px] font-bold uppercase muted">Coque</dt><dd class="font-bold flex items-center gap-1.5"><i class="w-3 h-3 rounded-full" style="background: {{ $boat->color() }}"></i>{{ $boat->hull_color ? ucfirst($boat->hull_color) : '—' }}</dd></div>
                     </dl>

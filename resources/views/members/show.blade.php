@@ -16,11 +16,11 @@
                 @if ($member->nickname)
                     <p class="muted text-sm">« {{ $member->nickname }} »</p>
                 @endif
+                @if ($member->birth_date || $member->yole_since_year !== null)
+                    <p class="text-sm font-semibold text-slate-600 mt-1">{{ implode(' · ', array_filter([$member->formattedAge(), $member->formattedYoleYears()])) }}</p>
+                @endif
                 <div class="flex justify-center flex-wrap gap-1.5 mt-3">
                     <x-level-pill :level="$member->level" />
-                    @if ($member->category)
-                        <span class="chip bg-slate-100 text-slate-700">{{ $member->category->label() }}</span>
-                    @endif
                     @if ($member->is_active)
                         <span class="chip bg-emerald-100 text-emerald-800">Actif</span>
                     @else
@@ -76,7 +76,7 @@
 
             <div class="card p-5">
                 <x-section-title :title="$lastAttendances->count() > 1 ? $lastAttendances->count().' dernières sorties' : 'Dernières sorties'">
-                    <a href="{{ route('history.index', ['period' => 'season']) }}" class="text-sm font-semibold text-navy-700">Historique complet</a>
+                    <a href="{{ route('attendance.stats', ['period' => 'season']) }}" class="text-sm font-semibold text-navy-700">Historique complet</a>
                 </x-section-title>
                 @if ($lastAttendances->isEmpty())
                     <p class="text-sm muted">Pas encore d’appel enregistré pour ce membre.</p>

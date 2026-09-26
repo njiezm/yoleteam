@@ -30,13 +30,14 @@ class BoatTest extends TestCase
     public function test_boats_index_renders_boat_cards_with_their_configurations(): void
     {
         $user = $this->signInAdmin();
-        $this->boatWithConfigurations($user->association, ['name' => 'Ti-Bwa', 'sponsor' => 'Rhum Clément']);
+        $this->boatWithConfigurations($user->association, ['name' => 'Ti-Bwa', 'sponsor' => 'Rhum Clément', 'hull_color' => 'rouge']);
         $this->boatWithConfigurations($user->association, ['name' => 'Zetwal', 'is_active' => false]);
 
         $this->get(route('boats.index'))
             ->assertOk()
             ->assertSee('Ti-Bwa')
-            ->assertSee('Rhum Clément')
+            ->assertSee('Coque rouge')
+            ->assertDontSee('Rhum Clément')
             ->assertSee('Opérationnelle')
             ->assertSee('Indisponible')
             ->assertSee('2 voiles · 8 bwa · défaut')
@@ -81,7 +82,6 @@ class BoatTest extends TestCase
 
         $response = $this->post(route('boats.store'), [
             'name' => 'Lanbi',
-            'sponsor' => 'Ville du Robert',
             'hull_color' => 'vert',
             'length_m' => '9.40',
             'notes' => 'Coque refaite en 2025',
@@ -309,6 +309,18 @@ class BoatTest extends TestCase
         $this->assertSame(0, CrewPlan::withTrashed()->count());
         $this->assertModelExists($member);
         $this->assertModelExists($outing);
+    }
+
+    public function test_sponsor_is_no_longer_edited_nor_displayed(): void
+    {
+        $user = $this->signInAdmin();
+        $boat = $this->boatWithConfigurations($user->association, ['name' => 'Ti-Bwa', 'sponsor' => 'Rhum Clément']);
+
+        $this->get(route('boats.create'))->assertOk()->assertDontSee('name="sponsor"', false)->assertDontSee('Sponsor');
+        $this->get(route('boats.show', $boat))->assertOk()->assertDontSee('name="sponsor"', false)->assertDontSee('Rhum Clément');
+
+        $this->put(route('boats.update', $boat), ['name' => 'Ti-Bwa', 'sponsor' => 'Autre', 'is_active' => '1'])->assertSessionHasNoErrors();
+        $this->assertSame('Rhum Clément', $boat->fresh()->sponsor);
     }
 
     public function test_patron_can_view_boats_read_only(): void

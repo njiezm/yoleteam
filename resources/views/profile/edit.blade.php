@@ -27,9 +27,9 @@
                 @foreach (['current_password' => 'Mot de passe actuel', 'password' => 'Nouveau mot de passe', 'password_confirmation' => 'Confirmation'] as $field => $label)
                     <div>
                         <label class="label" for="{{ $field }}">{{ $label }}</label>
-                        <input id="{{ $field }}" name="{{ $field }}" type="password" required
-                               autocomplete="{{ $field === 'current_password' ? 'current-password' : 'new-password' }}"
-                               @class(['input', 'input-error' => $bag->has($field)])>
+                        <x-password-input :name="$field" required
+                                          :autocomplete="$field === 'current_password' ? 'current-password' : 'new-password'"
+                                          :invalid="$bag->has($field)" />
                         @if ($bag->has($field))
                             <p class="text-xs text-red-600 font-semibold mt-1.5">{{ $bag->first($field) }}</p>
                         @endif

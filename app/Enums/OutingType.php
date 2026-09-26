@@ -6,15 +6,21 @@ enum OutingType: string
 {
     case Entrainement = 'entrainement';
     case Regate = 'regate';
-    case SortieLibre = 'sortie_libre';
+    case Tdy = 'tdy';
 
     public function label(): string
     {
         return match ($this) {
             self::Entrainement => 'Entraînement',
             self::Regate => 'Course',
-            self::SortieLibre => 'Sortie libre',
+            self::Tdy => 'TDY (Tour des yoles)',
         };
+    }
+
+    /** Race and TDY outings record results (places and rankings). */
+    public function hasResults(): bool
+    {
+        return $this !== self::Entrainement;
     }
 
     /** @return array<string, string> */

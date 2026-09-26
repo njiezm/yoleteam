@@ -17,12 +17,21 @@ export function windLabel(degrees) {
     return COMPASS[Math.round((((+degrees % 360) + 360) % 360) / 22.5) % 16];
 }
 
-/** Bwa dressés all sit on the windward side (bwaSide); stored coordinates are on the babord side. */
+/**
+ * Bwa dressés sit on the windward side (bwaSide; stored coordinates are on the babord side). Écoutes sit by
+ * their sail, to leeward (stored on the tribord side): both are mirrored when the bwa go tribord.
+ */
 function seatX(position, placement, bwaSide) {
-    if (position.role !== 'dresseur') return X(position.x);
-    const offset = PLACEMENT_X[placement || 'milieu'];
-    return X(bwaSide === 'tribord' ? 100 - offset : offset);
+    if (position.role === 'dresseur') {
+        const offset = PLACEMENT_X[placement || 'milieu'];
+        return X(bwaSide === 'tribord' ? 100 - offset : offset);
+    }
+    if (position.role === 'ecoute' && bwaSide === 'tribord') return X(100 - position.x);
+    return X(position.x);
 }
+
+// Seats are name tags (rectangles) so that long first names stay readable.
+const tagWidth = (text, compact) => Math.min(compact ? 64 : 118, Math.max(compact ? 40 : 70, text.length * (compact ? 6 : 6.4) + 18));
 
 export const fondIndex = (code) => { const m = /^fond_(\d+)$/.exec(code); return m ? +m[1] : null; };
 
@@ -47,7 +56,6 @@ export function yoleSVG(opts) {
     const positions = visiblePositions(config.positions, fondCount);
     const windward = bwaSide === 'tribord' ? 'tribord' : 'babord';
     const bwaYs = [...new Set(positions.filter((p) => p.role === 'dresseur').map((p) => p.y))].sort((a, b) => a - b);
-    const r = compact ? 20 : 23;
 
     let s = `<svg viewBox="0 0 ${W} ${H}" class="w-full h-full select-none" role="img" aria-label="Plan de la yole vue de dessus">
     <defs>
@@ -108,6 +116,11 @@ export function yoleSVG(opts) {
         const member = assignment ? members[assignment.member_id] : null;
         const cx = seatX(p, assignment?.placement, windward);
         const cy = Y(p.y);
+        const text = member ? (labels ? member.short : member.initials) : `+ ${role.short}${p.bwa ?? ''}`;
+        const h = compact ? 24 : 30;
+        const w = tagWidth(text, compact || !labels);
+        const x = Math.min(W - 4 - w, Math.max(4, cx - w / 2));
+        const y = cy - h / 2;
         const attrs = interactive
             ? `data-pos="${escapeHtml(p.code)}" class="yl-pos cursor-pointer" tabindex="0" role="button" aria-label="${escapeHtml(p.label)}${member ? ' : ' + escapeHtml(member.short) : ''}"`
             : 'class="yl-pos"';
@@ -118,23 +131,14 @@ export function yoleSVG(opts) {
             s += `<line x1="${x0}" y1="${cy}" x2="${x1}" y2="${cy}" stroke="#fff" stroke-width="2" stroke-dasharray="2 5" opacity=".9"/>`;
         }
         if (selected === p.code) {
-            s += `<circle cx="${cx}" cy="${cy}" r="${r + 8}" fill="none" stroke="#F5B700" stroke-width="4"><animate attributeName="r" values="${r + 6};${r + 10};${r + 6}" dur="1.6s" repeatCount="indefinite"/></circle>`;
+            s += `<rect x="${x - 6}" y="${y - 6}" width="${w + 12}" height="${h + 12}" rx="13" fill="none" stroke="#F5B700" stroke-width="4"><animate attributeName="stroke-opacity" values="1;.35;1" dur="1.6s" repeatCount="indefinite"/></rect>`;
         }
         if (member) {
-            s += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${role.color}" stroke="#fff" stroke-width="3" filter="url(#${id}-sh)"/>
-                  <text x="${cx}" y="${cy + 5}" text-anchor="middle" class="yl-init">${escapeHtml(member.initials)}</text>`;
-            if (labels) {
-                const lw = Math.max(58, member.short.length * 6.4 + 12);
-                const ly = cy + r + 6;
-                // Keep the name tag inside the drawing for seats at the far end of a bwa.
-                const lx = Math.min(W - 4 - lw / 2, Math.max(4 + lw / 2, cx));
-                s += `<rect x="${lx - lw / 2}" y="${ly}" width="${lw}" height="17" rx="8.5" fill="#0B2545" opacity=".92"/>
-                      <text x="${lx}" y="${ly + 12}" text-anchor="middle" class="yl-name">${escapeHtml(member.short)}</text>`;
-            }
+            s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="${role.color}" stroke="#fff" stroke-width="2.5" filter="url(#${id}-sh)"/>
+                  <text x="${x + w / 2}" y="${cy + 4}" text-anchor="middle" class="yl-name">${escapeHtml(text)}</text>`;
         } else {
-            s += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#ffffffd9" stroke="${role.color}" stroke-width="2.5" stroke-dasharray="5 4"/>
-                  <text x="${cx}" y="${cy - 2}" text-anchor="middle" class="yl-plus" fill="${role.color}">+</text>
-                  <text x="${cx}" y="${cy + 11}" text-anchor="middle" class="yl-short" fill="${role.color}">${escapeHtml(role.short)}${p.bwa ?? ''}</text>`;
+            s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="#ffffffe0" stroke="${role.color}" stroke-width="2" stroke-dasharray="5 4"/>
+                  <text x="${x + w / 2}" y="${cy + 4}" text-anchor="middle" class="yl-short" fill="${role.color}">${escapeHtml(text)}</text>`;
         }
         s += '</g>';
     });

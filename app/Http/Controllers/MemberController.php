@@ -12,53 +12,102 @@ use App\Models\CrewRole;
 use App\Models\Member;
 use App\Models\Outing;
 use App\Services\AttendanceStats;
+use App\Support\XlsxWriter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MemberController extends Controller
 {
     public function index(Request $request, AttendanceStats $stats): View
     {
         $associationId = $request->user()->association_id;
-        $search = trim((string) $request->query('q', ''));
-        $level = MemberLevel::tryFrom((string) $request->query('level'));
-        $status = in_array($request->query('status'), ['inactive', 'all'], true) ? $request->query('status') : 'active';
-        $crewRoles = CrewRole::query()->orderBy('sort_order')->get();
-        $role = $crewRoles->firstWhere('code', $request->query('role'));
-
-        $members = Member::query()
-            ->forAssociation($associationId)
-            ->with('crewRoles')
-            ->when($status === 'active', fn (Builder $query) => $query->where('is_active', true))
-            ->when($status === 'inactive', fn (Builder $query) => $query->where('is_active', false))
-            ->when($level, fn (Builder $query) => $query->where('level', $level))
-            ->when($search !== '', fn (Builder $query) => $query->where(function (Builder $query) use ($search): void {
-                $query->whereLike('first_name', "%{$search}%")
-                    ->orWhereLike('last_name', "%{$search}%")
-                    ->orWhereLike('nickname', "%{$search}%")
-                    ->orWhereLike('phone', "%{$search}%");
-            }))
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get();
+        ['members' => $members, 'all' => $all, 'crewRoles' => $crewRoles, 'filters' => $filters] = $this->filteredMembers($request);
 
         $roleCounts = $crewRoles->mapWithKeys(fn (CrewRole $crewRole) => [
-            $crewRole->code => $members->filter(fn (Member $member) => $member->crewRoles->contains('id', $crewRole->id))->count(),
+            $crewRole->code => $all->filter(fn (Member $member) => $member->crewRoles->contains('id', $crewRole->id))->count(),
         ]);
 
         return view('members.index', [
-            'members' => $role
-                ? $members->filter(fn (Member $member) => $member->crewRoles->contains('id', $role->id))->values()
-                : $members,
-            'total' => $members->count(),
+            'members' => $members,
+            'total' => $all->count(),
             'activeCount' => Member::query()->forAssociation($associationId)->active()->count(),
             'crewRoles' => $crewRoles,
             'roleCounts' => $roleCounts,
-            'rates' => $stats->perMember($associationId, today()->startOfYear())->map(fn (array $row) => $row['rate']),
-            'filters' => ['q' => $search, 'level' => $level?->value, 'status' => $status, 'role' => $role?->code],
+            'rates' => $this->seasonRates($associationId, $stats),
+            'filters' => $filters,
+            'exportQuery' => array_filter($filters, fn ($value) => $value !== null && $value !== '' && $value !== 'active'),
+        ]);
+    }
+
+    /**
+     * Excel (.xlsx) export of the members list, with the same filters as the index.
+     */
+    public function export(Request $request, AttendanceStats $stats): StreamedResponse
+    {
+        ['members' => $members] = $this->filteredMembers($request);
+        $rates = $this->seasonRates($request->user()->association_id, $stats);
+
+        $writer = new XlsxWriter('Membres');
+        $writer->setColumnWidths([20, 18, 14, 7, 15, 11, 11, 14, 42, 17, 30, 8, 19]);
+        $writer->addRow([
+            'Nom', 'Prénom', 'Surnom', 'Âge', 'Années de yole', 'Poids (kg)', 'Taille (cm)', 'Niveau',
+            'Postes (préféré marqué ★)', 'Téléphone', 'E-mail', 'Actif', 'Présence saison (%)',
+        ], bold: true);
+
+        foreach ($members as $member) {
+            $writer->addRow([
+                $member->last_name,
+                $member->first_name,
+                $member->nickname,
+                $member->age(),
+                $member->yoleYears(),
+                $member->weight_kg !== null ? (float) $member->weight_kg : null,
+                $member->height_cm,
+                $member->level?->label(),
+                $this->rolesLabel($member),
+                $member->phone,
+                $member->email,
+                $member->is_active ? 'Oui' : 'Non',
+                $rates[$member->id] ?? null,
+            ]);
+        }
+
+        $contents = $writer->toString();
+
+        return response()->streamDownload(
+            function () use ($contents): void {
+                echo $contents;
+            },
+            'membres-'.today()->format('Y-m-d').'.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        );
+    }
+
+    /**
+     * Print-optimised members list (the browser saves it as PDF), with the same filters as the index.
+     */
+    public function print(Request $request, AttendanceStats $stats): View
+    {
+        ['members' => $members, 'crewRoles' => $crewRoles, 'filters' => $filters] = $this->filteredMembers($request);
+        $level = MemberLevel::tryFrom((string) $filters['level']);
+        $role = $crewRoles->firstWhere('code', $filters['role']);
+
+        return view('members.print', [
+            'members' => $members,
+            'association' => $request->user()->association,
+            'rates' => $this->seasonRates($request->user()->association_id, $stats),
+            'filtersSummary' => array_values(array_filter([
+                $filters['q'] !== '' ? 'Recherche « '.$filters['q'].' »' : null,
+                $level ? 'Niveau : '.$level->label() : null,
+                $role ? 'Poste : '.$role->label : null,
+                ['active' => 'Membres actifs', 'inactive' => 'Membres inactifs', 'all' => 'Tous les membres'][$filters['status']],
+            ])),
+            'rolesLabels' => $members->mapWithKeys(fn (Member $member) => [$member->id => $this->rolesLabel($member)]),
         ]);
     }
 
@@ -189,5 +238,62 @@ class MemberController extends Controller
         });
 
         return redirect()->route('members.index')->with('status', 'Membre supprimé');
+    }
+
+    /**
+     * Members matching the index filters (q, level, status, role), plus the list before the role filter.
+     *
+     * @return array{members: Collection<int, Member>, all: Collection<int, Member>, crewRoles: Collection<int, CrewRole>, filters: array{q: string, level: ?string, status: string, role: ?string}}
+     */
+    private function filteredMembers(Request $request): array
+    {
+        $search = trim((string) $request->query('q', ''));
+        $level = MemberLevel::tryFrom((string) $request->query('level'));
+        $status = in_array($request->query('status'), ['inactive', 'all'], true) ? $request->query('status') : 'active';
+        $crewRoles = CrewRole::query()->orderBy('sort_order')->get();
+        $role = $crewRoles->firstWhere('code', $request->query('role'));
+
+        $members = Member::query()
+            ->forAssociation($request->user()->association_id)
+            ->with('crewRoles')
+            ->when($status === 'active', fn (Builder $query) => $query->where('is_active', true))
+            ->when($status === 'inactive', fn (Builder $query) => $query->where('is_active', false))
+            ->when($level, fn (Builder $query) => $query->where('level', $level))
+            ->when($search !== '', fn (Builder $query) => $query->where(function (Builder $query) use ($search): void {
+                $query->whereLike('first_name', "%{$search}%")
+                    ->orWhereLike('last_name', "%{$search}%")
+                    ->orWhereLike('nickname', "%{$search}%")
+                    ->orWhereLike('phone', "%{$search}%");
+            }))
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+
+        return [
+            'members' => $role
+                ? $members->filter(fn (Member $member) => $member->crewRoles->contains('id', $role->id))->values()
+                : $members,
+            'all' => $members,
+            'crewRoles' => $crewRoles,
+            'filters' => ['q' => $search, 'level' => $level?->value, 'status' => $status, 'role' => $role?->code],
+        ];
+    }
+
+    /**
+     * Season attendance rate per member id.
+     *
+     * @return Collection<int, int|null>
+     */
+    private function seasonRates(int $associationId, AttendanceStats $stats): Collection
+    {
+        return $stats->perMember($associationId, today()->startOfYear())->map(fn (array $row) => $row['rate']);
+    }
+
+    /** "Bwa dressé ★, Écopeur": crew roles, preferred first and starred. */
+    private function rolesLabel(Member $member): string
+    {
+        return $member->orderedCrewRoles()
+            ->map(fn (CrewRole $role) => $role->label.($role->pivot->is_preferred ? ' ★' : ''))
+            ->join(', ');
     }
 }

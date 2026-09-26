@@ -24,7 +24,6 @@ class BoatRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'sponsor' => ['nullable', 'string', 'max:255'],
             'hull_color' => ['nullable', Rule::in(array_keys(Boat::HULL_COLORS))],
             'length_m' => ['nullable', 'numeric', 'min:1', 'max:99'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -33,12 +32,12 @@ class BoatRequest extends FormRequest
     }
 
     /**
-     * @return array{name: string, sponsor: ?string, hull_color: ?string, length_m: ?string, notes: ?string, is_active: bool}
+     * @return array{name: string, hull_color: ?string, length_m: ?string, notes: ?string, is_active: bool}
      */
     public function boatData(): array
     {
         return [
-            ...$this->safe()->only(['name', 'sponsor', 'hull_color', 'length_m', 'notes']),
+            ...$this->safe()->only(['name', 'hull_color', 'length_m', 'notes']),
             'is_active' => $this->boolean('is_active'),
         ];
     }

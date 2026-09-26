@@ -2,14 +2,22 @@ import { mountDrawings } from './yole';
 import { mountAttendance } from './attendance';
 import { mountCrewPlanEditor } from './crew-plan-editor';
 import { mountSync } from './sync';
+import { mountMemberForm } from './member-form';
+import { mountPasswordToggles } from './password-toggle';
 import { mountOfflineForms } from './offline-forms';
 import { mountOfflineOuting } from './offline-outing';
-import { mountOfflineOutingList, mountOfflineOutingPage } from './offline-outing-page';
+import { mountOfflineOutingList, mountOfflineOutingPage, mountOfflineOutingPickers, mountOfflineShortcuts } from './offline-outing-page';
 
 document.addEventListener('DOMContentLoaded', () => {
     mountDrawings();
     mountSync();
     mountOfflineForms();
+    mountOfflineShortcuts();
+    mountOfflineOutingPickers();
+    mountPasswordToggles();
+
+    const memberForm = document.querySelector('[data-member-form]');
+    if (memberForm) mountMemberForm(memberForm);
 
     // Pages of outings created offline mount their widgets themselves ([data-deferred]).
     const offlineOuting = document.querySelector('[data-offline-outing-page]');

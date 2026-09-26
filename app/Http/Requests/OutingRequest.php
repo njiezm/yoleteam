@@ -37,6 +37,10 @@ class OutingRequest extends FormRequest
             'end_time' => ['nullable', 'date_format:H:i', 'after:start_time'],
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'notes_before' => ['nullable', 'string', 'max:5000'],
+            'notes_during' => ['nullable', 'string', 'max:5000'],
+            'notes_after' => ['nullable', 'string', 'max:5000'],
+            'distance_nm' => ['nullable', 'numeric', 'between:0,9999.9'],
             'wind_direction' => ['nullable', 'integer', 'between:0,359'],
             'wind_strength' => ['nullable', 'integer', 'between:0,80'],
             'wind_gusts' => ['nullable', 'integer', 'between:0,99'],
@@ -44,10 +48,6 @@ class OutingRequest extends FormRequest
             'swell_m' => ['nullable', 'numeric', 'between:0,15'],
             'weather' => ['nullable', 'string', 'max:255'],
             'status' => [$creating ? 'exclude' : 'required', Rule::enum(OutingStatus::class)],
-            'race_stage_id' => [
-                'nullable', 'integer',
-                Rule::exists('race_stages', 'id')->whereIn('race_id', fn ($query) => $query->select('id')->from('races')->where('association_id', $associationId)),
-            ],
             'boats' => [$creating ? 'nullable' : 'exclude', 'array'],
             'boats.*' => [
                 'integer',
@@ -62,7 +62,11 @@ class OutingRequest extends FormRequest
     {
         return [
             'boats.*' => 'yole',
-            'race_stage_id' => 'étape de régate',
+            'notes' => 'consignes',
+            'notes_before' => 'impressions avant la sortie',
+            'notes_during' => 'impressions pendant la sortie',
+            'notes_after' => 'impressions après la sortie',
+            'distance_nm' => 'distance parcourue',
             'wind_direction' => 'direction du vent',
             'wind_strength' => 'force du vent',
             'wind_gusts' => 'rafales',

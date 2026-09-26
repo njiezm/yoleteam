@@ -21,7 +21,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'association_id', 'uuid', 'type', 'title', 'date', 'start_time', 'end_time', 'location',
     'wind_direction', 'wind_strength', 'wind_gusts', 'sea_state', 'swell_m', 'weather',
-    'status', 'race_stage_id', 'notes', 'created_by',
+    'status', 'race_stage_id', 'notes', 'notes_before', 'notes_during', 'notes_after', 'distance_nm',
+    'day_rank', 'stage_rank', 'general_rank', 'created_by',
 ])]
 class Outing extends Model
 {
@@ -39,7 +40,64 @@ class Outing extends Model
             'wind_gusts' => 'integer',
             'sea_state' => SeaState::class,
             'swell_m' => 'decimal:1',
+            'distance_nm' => 'decimal:1',
+            'day_rank' => 'integer',
+            'stage_rank' => 'integer',
+            'general_rank' => 'integer',
         ];
+    }
+
+    /** Minutes between start and end time, null until both are entered (end after start). */
+    public function durationMinutes(): ?int
+    {
+        if (! $this->start_time || ! $this->end_time) {
+            return null;
+        }
+
+        [$startHours, $startMinutes] = array_map('intval', explode(':', substr($this->start_time, 0, 5)));
+        [$endHours, $endMinutes] = array_map('intval', explode(':', substr($this->end_time, 0, 5)));
+        $minutes = ($endHours * 60 + $endMinutes) - ($startHours * 60 + $startMinutes);
+
+        return $minutes > 0 ? $minutes : null;
+    }
+
+    /** "2 h 30", "3 h", "45 min" — null when the duration is unknown. */
+    public function durationLabel(): ?string
+    {
+        $minutes = $this->durationMinutes();
+
+        if ($minutes === null) {
+            return null;
+        }
+
+        if ($minutes < 60) {
+            return "{$minutes} min";
+        }
+
+        $hours = intdiv($minutes, 60);
+        $rest = $minutes % 60;
+
+        return $rest === 0 ? "{$hours} h" : sprintf('%d h %02d', $hours, $rest);
+    }
+
+    /** Average speed in knots (distance in nautical miles / duration in hours), 1 decimal. */
+    public function averageSpeedKnots(): ?float
+    {
+        $minutes = $this->durationMinutes();
+
+        if ($minutes === null || $this->distance_nm === null || (float) $this->distance_nm <= 0) {
+            return null;
+        }
+
+        return round((float) $this->distance_nm / ($minutes / 60), 1);
+    }
+
+    /** Sum of the points of every race of the outing (lowest wins); null when no race has points. */
+    public function combiPoints(): ?int
+    {
+        $points = $this->races->whereNotNull('points');
+
+        return $points->isEmpty() ? null : (int) $points->sum('points');
     }
 
     /** "06:00 – 08:30" @return Attribute<string|null, never> */
@@ -109,6 +167,12 @@ class Outing extends Model
     public function crewPlans(): HasMany
     {
         return $this->hasMany(CrewPlan::class);
+    }
+
+    /** @return HasMany<OutingRace, $this> */
+    public function races(): HasMany
+    {
+        return $this->hasMany(OutingRace::class)->orderBy('number');
     }
 
     /** @param Builder<static> $query */

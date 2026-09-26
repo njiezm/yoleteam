@@ -8,6 +8,7 @@ use App\Enums\OutingType;
 use App\Models\Attendance;
 use App\Models\Member;
 use App\Models\Outing;
+use App\Services\AttendanceAlerts;
 use App\Services\AttendanceStats;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -20,7 +21,7 @@ class HistoryController extends Controller
     /** Number of outings displayed in the attendance grid. */
     private const GRID_OUTINGS = 10;
 
-    public function index(Request $request, AttendanceStats $stats): View
+    public function index(Request $request, AttendanceStats $stats, AttendanceAlerts $alerts): View
     {
         $associationId = $request->user()->association_id;
         [$period, $since] = $this->period($request);
@@ -37,6 +38,7 @@ class HistoryController extends Controller
             ->map(fn (Member $member) => ['member' => $member, ...$perMember[$member->id]]);
 
         return view('history.index', [
+            'alerts' => $alerts->for($associationId),
             'filters' => ['period' => $period, 'type' => $type?->value],
             'outings' => $outings,
             'gridOutings' => $gridOutings,
