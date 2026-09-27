@@ -60,6 +60,7 @@
                                 <b>{{ $member->last_name }}</b> {{ $member->first_name }}
                                 @if ($member->nickname)<span class="text-slate-500"> « {{ $member->nickname }} »</span>@endif
                                 @unless ($member->is_active)<span class="text-slate-500"> (inactif)</span>@endunless
+                                @unless ($member->medical_certificate)<span class="text-red-600 font-semibold"> · certificat manquant</span>@endunless
                             </td>
                             <td class="whitespace-nowrap">{{ $member->formattedAge() ?? '—' }}</td>
                             <td class="whitespace-nowrap">{{ $member->yoleYears() !== null ? $member->yoleYears().' an'.($member->yoleYears() > 1 ? 's' : '') : '—' }}</td>

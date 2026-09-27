@@ -5,6 +5,7 @@
     $gender = (string) old('gender', $member->gender?->value);
     $level = (string) old('level', $member->level?->value);
     $isActive = $hasOld ? (bool) old('is_active') : (bool) $member->is_active;
+    $hasCertificate = $hasOld ? (bool) old('medical_certificate') : (bool) $member->medical_certificate;
 @endphp
 <form id="member-form" data-member-form method="POST" action="{{ $action }}" class="max-w-4xl space-y-5" data-offline-form="{{ $method === 'PUT' ? 'Membre modifié : '.$member->full_name : 'Nouveau membre' }}" data-offline-redirect="{{ route('members.index') }}">
     @csrf
@@ -63,7 +64,7 @@
         <h3 class="font-bold mb-1">Gabarit</h3>
         <p class="text-xs muted mb-4">Utilisé uniquement pour l’indicateur d’équilibre du plan d’équipage.</p>
         <div class="grid grid-cols-2 gap-4">
-            <x-field label="Poids (kg)" name="weight_kg"><x-input name="weight_kg" type="number" :value="$member->weight_kg !== null ? (float) $member->weight_kg : null" min="30" max="150" step="0.1" inputmode="decimal" /></x-field>
+            <x-field label="Poids (kg)" name="weight_kg"><x-input name="weight_kg" type="number" :value="$member->weight_kg !== null ? (float) $member->weight_kg : null" min="1" step="0.1" inputmode="decimal" /></x-field>
             <x-field label="Taille (cm)" name="height_cm"><x-input name="height_cm" type="number" :value="$member->height_cm" min="100" max="220" step="1" inputmode="numeric" /></x-field>
         </div>
     </section>
@@ -118,6 +119,17 @@
             <textarea id="notes" name="notes" maxlength="5000" @class(['input h-28 py-3', 'input-error' => $errors->has('notes')]) placeholder="Disponibilités, remarques du patron…">{{ old('notes', $member->notes) }}</textarea>
         </x-field>
         <label class="flex items-center justify-between gap-3 mt-4 p-3 rounded-xl bg-slate-50 cursor-pointer">
+            <div class="flex items-center gap-3">
+                <span class="w-9 h-9 rounded-xl grid place-items-center bg-red-100 text-red-600 shrink-0"><x-icon name="medical" class="w-4 h-4" /></span>
+                <div>
+                    <p class="font-semibold text-sm">Certificat médical</p>
+                    <p class="text-xs muted">Non coché = pas à jour (signalé dans la liste des membres).</p>
+                </div>
+            </div>
+            <input type="checkbox" name="medical_certificate" value="1" class="peer sr-only" @checked($hasCertificate)>
+            <span class="w-11 h-6 shrink-0 rounded-full bg-slate-300 relative transition peer-checked:bg-emerald-500 peer-checked:[&>i]:translate-x-5 peer-focus-visible:ring-4 peer-focus-visible:ring-sun-400/30"><i class="absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white shadow transition"></i></span>
+        </label>
+        <label class="flex items-center justify-between gap-3 mt-2 p-3 rounded-xl bg-slate-50 cursor-pointer">
             <div>
                 <p class="font-semibold text-sm">Membre actif</p>
                 <p class="text-xs muted">Les membres inactifs n’apparaissent plus dans l’appel.</p>

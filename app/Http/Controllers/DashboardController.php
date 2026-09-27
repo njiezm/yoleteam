@@ -91,6 +91,7 @@ class DashboardController extends Controller
                 $path('outings.edit', $outing),
                 $path('attendance.edit', $outing),
                 ...$outing->crewPlans->map(fn ($plan) => $path('crew-plans.edit', [$outing, $plan])),
+                ...($outing->crewPlans->count() > 1 ? [$path('crew-plans.index', $outing)] : []),
             ]))
             ->concat(Member::query()->forAssociation($associationId)->active()->pluck('id')->map(fn (int $id) => $path('members.show', $id)))
             ->concat(Boat::query()->forAssociation($associationId)->where('is_active', true)->pluck('id')->map(fn (int $id) => $path('boats.show', $id)))

@@ -7,6 +7,7 @@ use App\Http\Controllers\BoatConfigurationController;
 use App\Http\Controllers\BoatController;
 use App\Http\Controllers\CrewPlanController;
 use App\Http\Controllers\CrewPlanValidationController;
+use App\Http\Controllers\CrewShareController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\MemberController;
@@ -66,7 +67,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/equipage', [CrewPlanController::class, 'today'])->name('crew-plans.today');
     Route::scopeBindings()->group(function () {
+        Route::get('/sorties/{outing}/equipages', [CrewPlanController::class, 'index'])->name('crew-plans.index');
         Route::post('/sorties/{outing}/equipages', [CrewPlanController::class, 'store'])->name('crew-plans.store');
+        Route::put('/sorties/{outing}/partage-equipage', [CrewShareController::class, 'update'])->name('outings.share-crew.update');
         Route::get('/sorties/{outing}/equipages/{crewPlan}', [CrewPlanController::class, 'show'])->name('crew-plans.show');
         Route::get('/sorties/{outing}/equipages/{crewPlan}/modifier', [CrewPlanController::class, 'edit'])->name('crew-plans.edit');
         Route::put('/sorties/{outing}/equipages/{crewPlan}', [CrewPlanController::class, 'update'])->name('crew-plans.update');

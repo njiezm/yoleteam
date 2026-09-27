@@ -208,7 +208,9 @@ class RaceCrewTest extends TestCase
         $race1 = $this->firstRace();
         $this->post(route('crew-plans.store', $this->outing), ['boat_id' => $this->boat->id, 'race_number' => 2, 'copy_from' => $race1->id]);
 
-        $this->get(route('crew-plans.edit', [$this->outing, $race1]))->assertOk()->assertSee('Prixe – Midea · M1')->assertSee('Prixe – Midea · M2');
+        // The editor groups the boats of one race only: race 2 is composed on its own page.
+        $this->get(route('crew-plans.edit', [$this->outing, $race1]))->assertOk()->assertSee('Prixe – Midea · Manche 1')->assertDontSee('data-plan-tabs', false);
+        $this->get(route('crew-plans.index', $this->outing))->assertOk()->assertSeeInOrder(['Manche 1', 'Prixe – Midea', 'Manche 2', 'Prixe – Midea']);
         $this->get(route('crew-plans.show', [$this->outing, $race1]))->assertOk()->assertSee('Prixe – Midea · Manche 1');
     }
 }

@@ -1,6 +1,6 @@
 import { mountDrawings } from './yole';
 import { mountAttendance } from './attendance';
-import { mountCrewPlanEditor } from './crew-plan-editor';
+import { mountCrewPlanEditor, mountCrewPlanTabs } from './crew-plan-editor';
 import { mountSync } from './sync';
 import { mountMemberForm } from './member-form';
 import { mountPasswordToggles } from './password-toggle';
@@ -34,8 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const attendance = document.querySelector('[data-attendance]:not([data-deferred])');
     if (attendance) mountAttendance(attendance);
 
-    const editor = document.querySelector('[data-crew-editor]');
-    if (editor) mountCrewPlanEditor(editor);
+    document.querySelectorAll('[data-crew-editor]').forEach((editor) => mountCrewPlanEditor(editor));
+    const planTabs = document.querySelector('[data-plan-tabs]');
+    if (planTabs) mountCrewPlanTabs(planTabs);
 
     // Server flash messages fade out on their own.
     const flash = document.querySelector('[data-flash]');

@@ -25,11 +25,16 @@
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><x-icon name="search" class="w-4 h-4" /></span>
             <input name="q" value="{{ $filters['q'] }}" class="input pl-9" placeholder="Nom, surnom, téléphone…" aria-label="Rechercher">
         </label>
-        <div class="flex gap-2 overflow-x-auto scrollbar-none">
+        <div class="relative flex gap-2 overflow-x-auto scrollbar-none">
             <select name="level" class="input w-44" aria-label="Niveau" onchange="this.form.submit()">
                 <option value="">Tous niveaux</option>
                 @foreach (\App\Enums\MemberLevel::options() as $value => $label)
                     <option value="{{ $value }}" @selected($filters['level'] === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+            <select name="certificate" class="input w-44" aria-label="Certificat médical" onchange="this.form.submit()">
+                @foreach (['' => 'Certificat : tous', 'ok' => 'Certificat à jour', 'missing' => 'Certificat manquant'] as $value => $label)
+                    <option value="{{ $value }}" @selected($filters['certificate'] === $value)>{{ $label }}</option>
                 @endforeach
             </select>
             <select name="status" class="input w-32" aria-label="Statut" onchange="this.form.submit()">
@@ -41,7 +46,12 @@
         </div>
     </form>
 
-    @php($tabQuery = array_filter(['q' => $filters['q'], 'level' => $filters['level'], 'status' => $filters['status'] !== 'active' ? $filters['status'] : null]))
+    @php($tabQuery = array_filter(['q' => $filters['q'], 'level' => $filters['level'], 'certificate' => $filters['certificate'], 'status' => $filters['status'] !== 'active' ? $filters['status'] : null]))
+    @if ($missingCertificates > 0 && $filters['certificate'] !== 'missing')
+        <a href="{{ route('members.index', [...$tabQuery, 'certificate' => 'missing']) }}" class="mt-3 flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm font-semibold p-3">
+            <x-icon name="medical" class="w-4 h-4 shrink-0" />{{ $missingCertificates }} membre(s) actif(s) sans certificat médical : pas à jour<x-icon name="right" class="w-4 h-4 ml-auto" />
+        </a>
+    @endif
     <div class="flex gap-1.5 overflow-x-auto scrollbar-none mt-3">
         <a href="{{ route('members.index', $tabQuery) }}" @class(['chip h-8 px-3 whitespace-nowrap', 'bg-navy-900 text-white' => ! $filters['role'], 'bg-white border border-slate-200 text-slate-600' => $filters['role']])>Tous · {{ $total }}</a>
         @foreach ($crewRoles as $crewRole)
@@ -70,7 +80,7 @@
                                 <a href="{{ route('members.show', $member) }}" class="flex items-center gap-3">
                                     <x-avatar :member="$member" size="w-9 h-9 text-xs" />
                                     <div>
-                                        <p class="font-bold">{{ $member->full_name }}</p>
+                                        <p class="font-bold flex items-center gap-1.5">{{ $member->full_name }} <x-medical-badge :member="$member" compact /></p>
                                         <p class="text-xs muted">
                                             {{ implode(' · ', array_filter([$member->nickname ? '« '.$member->nickname.' »' : null, $member->formattedAge(), $member->formattedYoleYears()])) }}
                                             @unless ($member->is_active)<span class="chip bg-slate-100 text-slate-500 ml-1 py-0">Inactif</span>@endunless
@@ -111,7 +121,7 @@
                 <a href="{{ route('members.show', $member) }}" class="card p-3 flex items-center gap-3">
                     <x-avatar :member="$member" />
                     <div class="flex-1 min-w-0">
-                        <p class="font-bold truncate">{{ $member->full_name }}</p>
+                        <p class="font-bold flex items-center gap-1.5 min-w-0"><span class="truncate">{{ $member->full_name }}</span> <x-medical-badge :member="$member" compact /></p>
                         @if ($member->birth_date || $member->yole_since_year !== null)
                             <p class="text-xs muted truncate">{{ implode(' · ', array_filter([$member->formattedAge(), $member->formattedYoleYears()])) }}</p>
                         @endif

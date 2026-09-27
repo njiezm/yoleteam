@@ -112,14 +112,32 @@ class CrewPlanController extends Controller
         ]);
     }
 
+    /** All the crew plans of the outing side by side (read-only, printable), grouped by race. */
+    public function index(Outing $outing, CrewPlanPresenter $presenter): View
+    {
+        $outing->load(['crewPlans.boat', 'crewPlans.configuration.positions.crewRole', 'crewPlans.assignments.position.crewRole', 'crewPlans.assignments.member.crewRoles']);
+
+        return view('crew-plans.index', [
+            'outing' => $outing,
+            'presenter' => $presenter,
+        ]);
+    }
+
+    /**
+     * Editor of a plan, with the other boats of the same race on the same page (tabs): the crews of several
+     * boats are composed together, with a shared pool of rowers.
+     */
     public function edit(Request $request, Outing $outing, CrewPlan $crewPlan, CrewPlanEditorData $editorData): View
     {
-        $crewPlan->load(['boat', 'outing', 'configuration', 'assignments.position']);
+        $outing->load(['crewPlans.boat', 'crewPlans.configuration.positions', 'crewPlans.assignments.position', 'attendances']);
+        $plans = $outing->crewPlans->where('race_number', $crewPlan->race_number)->values();
+        $associationId = $request->user()->association_id;
 
         return view('crew-plans.edit', [
-            'outing' => $outing->load(['crewPlans.boat', 'attendances']),
-            'plan' => $crewPlan,
-            'editor' => $editorData->build($outing, $crewPlan->boat, $crewPlan, $request->user()->association_id),
+            'outing' => $outing,
+            'plan' => $plans->firstWhere('id', $crewPlan->id),
+            'plans' => $plans,
+            'editors' => $plans->mapWithKeys(fn (CrewPlan $plan) => [$plan->id => $editorData->build($outing, $plan->boat, $plan, $associationId)]),
             'windOptions' => CrewPlanPresenter::windOptions(),
         ]);
     }

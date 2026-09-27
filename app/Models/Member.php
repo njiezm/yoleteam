@@ -19,7 +19,7 @@ use Illuminate\Support\Collection;
 
 #[Fillable([
     'association_id', 'uuid', 'first_name', 'last_name', 'nickname', 'photo_path', 'phone', 'email',
-    'birth_date', 'gender', 'weight_kg', 'height_cm', 'level', 'yole_since_year', 'is_active', 'notes',
+    'birth_date', 'gender', 'weight_kg', 'height_cm', 'level', 'yole_since_year', 'medical_certificate', 'is_active', 'notes',
 ])]
 class Member extends Model
 {
@@ -35,6 +35,7 @@ class Member extends Model
             'height_cm' => 'integer',
             'level' => MemberLevel::class,
             'yole_since_year' => 'integer',
+            'medical_certificate' => 'boolean',
             'is_active' => 'boolean',
         ];
     }

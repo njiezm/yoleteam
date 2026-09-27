@@ -37,6 +37,7 @@ class MemberController extends Controller
             'members' => $members,
             'total' => $all->count(),
             'activeCount' => Member::query()->forAssociation($associationId)->active()->count(),
+            'missingCertificates' => Member::query()->forAssociation($associationId)->active()->where('medical_certificate', false)->count(),
             'crewRoles' => $crewRoles,
             'roleCounts' => $roleCounts,
             'rates' => $this->seasonRates($associationId, $stats),
@@ -54,10 +55,10 @@ class MemberController extends Controller
         $rates = $this->seasonRates($request->user()->association_id, $stats);
 
         $writer = new XlsxWriter('Membres');
-        $writer->setColumnWidths([20, 18, 14, 7, 15, 11, 11, 14, 42, 17, 30, 8, 19]);
+        $writer->setColumnWidths([20, 18, 14, 7, 15, 11, 11, 14, 42, 17, 30, 8, 18, 19]);
         $writer->addRow([
             'Nom', 'Prénom', 'Surnom', 'Âge', 'Années de yole', 'Poids (kg)', 'Taille (cm)', 'Niveau',
-            'Postes (préféré marqué ★)', 'Téléphone', 'E-mail', 'Actif', 'Présence saison (%)',
+            'Postes (préféré marqué ★)', 'Téléphone', 'E-mail', 'Actif', 'Certificat médical', 'Présence saison (%)',
         ], bold: true);
 
         foreach ($members as $member) {
@@ -74,6 +75,7 @@ class MemberController extends Controller
                 $member->phone,
                 $member->email,
                 $member->is_active ? 'Oui' : 'Non',
+                $member->medical_certificate ? 'À jour' : 'Manquant',
                 $rates[$member->id] ?? null,
             ]);
         }
@@ -258,13 +260,14 @@ class MemberController extends Controller
     /**
      * Members matching the index filters (q, level, status, role), plus the list before the role filter.
      *
-     * @return array{members: Collection<int, Member>, all: Collection<int, Member>, crewRoles: Collection<int, CrewRole>, filters: array{q: string, level: ?string, status: string, role: ?string}}
+     * @return array{members: Collection<int, Member>, all: Collection<int, Member>, crewRoles: Collection<int, CrewRole>, filters: array{q: string, level: ?string, certificate: string, status: string, role: ?string}}
      */
     private function filteredMembers(Request $request): array
     {
         $search = trim((string) $request->query('q', ''));
         $level = MemberLevel::tryFrom((string) $request->query('level'));
         $status = in_array($request->query('status'), ['inactive', 'all'], true) ? $request->query('status') : 'active';
+        $certificate = in_array($request->query('certificate'), ['ok', 'missing'], true) ? $request->query('certificate') : '';
         $crewRoles = CrewRole::query()->orderBy('sort_order')->get();
         $role = $crewRoles->firstWhere('code', $request->query('role'));
 
@@ -274,6 +277,7 @@ class MemberController extends Controller
             ->when($status === 'active', fn (Builder $query) => $query->where('is_active', true))
             ->when($status === 'inactive', fn (Builder $query) => $query->where('is_active', false))
             ->when($level, fn (Builder $query) => $query->where('level', $level))
+            ->when($certificate !== '', fn (Builder $query) => $query->where('medical_certificate', $certificate === 'ok'))
             ->when($search !== '', fn (Builder $query) => $query->where(function (Builder $query) use ($search): void {
                 $query->whereLike('first_name', "%{$search}%")
                     ->orWhereLike('last_name', "%{$search}%")
@@ -290,7 +294,7 @@ class MemberController extends Controller
                 : $members,
             'all' => $members,
             'crewRoles' => $crewRoles,
-            'filters' => ['q' => $search, 'level' => $level?->value, 'status' => $status, 'role' => $role?->code],
+            'filters' => ['q' => $search, 'level' => $level?->value, 'certificate' => $certificate, 'status' => $status, 'role' => $role?->code],
         ];
     }
 

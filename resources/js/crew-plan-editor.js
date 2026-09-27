@@ -2,7 +2,7 @@
 // switch configuration (1 / 2 voiles), set wind and bwa placement. The full plan state is autosaved.
 import { balance, escapeHtml as e, fondIndex, visiblePositions, yoleSVG } from './yole';
 import { send, toast } from './http';
-import { enqueue, forget, pending } from './offline-queue';
+import { enqueue, forget, pending, uuid } from './offline-queue';
 
 const ROLE_FILTERS = ['tous', 'patron', 'aide_patron', 'premiere_corde', 'ecoute', 'dresseur', 'ecopeur'];
 const PLACEMENTS = { interieur: 'Intérieur', milieu: 'Milieu', exterieur: 'Extérieur' };
@@ -37,10 +37,16 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
         validateRequested: false,
         timer: null,
         pending: null,
+        shareCrew: Boolean(data.shareCrew),
     };
 
+    // Several editors can live on one page (one per boat, tabs): only the visible one reacts to the page-wide
+    // buttons (header, sticky bar) and updates the page-wide counters.
+    const active = () => !root.closest('[hidden]');
+    const panel = root.closest('[data-editor-panel]') ?? document;
     const $ = (sel) => root.querySelector(sel);
-    const $$ = (sel, scope = document) => [...scope.querySelectorAll(sel)];
+    const $$ = (sel, scope = active() ? document : root) => [...scope.querySelectorAll(sel)];
+    const isBlocked = (m) => Boolean(m.elsewhere) && !S.shareCrew;
     const config = () => configurations.find((c) => c.id === S.configId) || configurations[0];
     const positions = () => visiblePositions(config().positions, S.fondCount);
     const positionByCode = (code) => positions().find((p) => p.code === code);
@@ -74,7 +80,8 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
         return 'offline';
     };
 
-    const setSaveState = (text) => $$('[data-save-state]').forEach((el) => { el.textContent = text; });
+    let saveText = '';
+    const setSaveState = (text) => { saveText = text; $$('[data-save-state]').forEach((el) => { el.textContent = text; }); };
 
     const queueKey = `crew_plan:${data.plan.uuid}`;
 
@@ -112,12 +119,21 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
         }
     };
 
+    /** Tells the other boats of the page who sits on this one (shared pool of rowers, tab counters). */
+    const broadcast = () => {
+        const b = stats();
+        window.dispatchEvent(new CustomEvent('yt:crew', { detail: {
+            uuid: data.plan.uuid, planId: data.plan.id, boat: data.plan.boat_name, memberIds: [...assignedIds()], filled: b.filled, total: b.positions,
+        } }));
+    };
+
     const changed = () => {
         S.dirty = true;
         setSaveState('Modifié…');
         clearTimeout(S.timer);
         S.timer = setTimeout(saveNow, 600);
         render();
+        broadcast();
     };
 
     window.addEventListener('beforeunload', (event) => {
@@ -127,7 +143,7 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
     // ---------- mutations ----------
     function assign(code, memberId) {
         const member = memberById.get(memberId);
-        if (!member || member.elsewhere) return;
+        if (!member || isBlocked(member)) return;
         const from = codeOf(memberId);
         if (from === code) return;
         const target = S.assignments[code];
@@ -196,15 +212,15 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
         const seat = codeOf(m.id);
         const sel = S.selected && positionByCode(S.selected);
         const fits = sel && m.roles.includes(sel.role);
-        const blocked = Boolean(m.elsewhere);
+        const blocked = isBlocked(m);
         const cls = blocked ? 'border-transparent bg-slate-50 opacity-50 cursor-not-allowed'
             : seat ? 'border-transparent bg-slate-50 opacity-70 cursor-grab'
                 : fits ? 'border-sun-400 bg-sun-100/40 cursor-grab' : 'border-slate-200 bg-white hover:border-navy-300 cursor-grab';
-        const sub = blocked ? `Sur ${e(m.elsewhere)}` : seat ? `Placé · ${e(positionByCode(seat)?.label)}` : e(m.level);
+        const sub = blocked ? `Sur ${e(m.elsewhere)}` : seat ? `Placé · ${e(positionByCode(seat)?.label)}` : m.elsewhere ? `Aussi sur ${e(m.elsewhere)}` : e(m.level);
         return `<div draggable="${!blocked}" data-member="${m.id}" role="button" tabindex="0" class="flex items-center gap-3 p-2.5 rounded-xl border ${cls}">
             <span class="text-slate-300 hidden lg:block">${icon('grip')}</span>
             <span class="w-9 h-9 text-xs rounded-full grid place-items-center font-bold text-white shrink-0" style="background:${e(m.color)}">${e(m.initials)}</span>
-            <div class="flex-1 min-w-0"><p class="text-sm font-bold truncate">${e(m.short)}${m.status === 'retard' ? ' <span class="text-amber-600" title="En retard">◷</span>' : ''}</p>
+            <div class="flex-1 min-w-0"><p class="text-sm font-bold truncate">${e(m.short)}${m.status === 'retard' ? ' <span class="text-amber-600" title="En retard">◷</span>' : ''}${m.certificate === false ? ' <span class="text-red-600" title="Certificat médical manquant">♥</span>' : ''}</p>
               <p class="text-[11px] muted truncate">${m.roles.map((r) => e(roles[r]?.label)).join(' · ') || 'Sans poste'}</p></div>
             <div class="text-right shrink-0"><p class="text-xs font-bold">${m.kg ? kg(m.kg) : '—'}</p><p class="text-[10px] muted max-w-24 truncate">${sub}</p></div></div>`;
     }
@@ -216,7 +232,7 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
         return pool()
             .filter((m) => S.roleFilter === 'tous' || m.roles.includes(S.roleFilter) || (S.roleFilter === 'premiere_corde' && m.roles.includes('deuxieme_corde')))
             .filter((m) => !q || m.name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(q))
-            .sort((a, z) => (Boolean(a.elsewhere) - Boolean(z.elsewhere))
+            .sort((a, z) => (isBlocked(a) - isBlocked(z))
                 || (assigned.has(a.id) - assigned.has(z.id))
                 || (sel ? z.roles.includes(sel.role) - a.roles.includes(sel.role) : 0)
                 || (sel ? a.roles.indexOf(sel.role) - z.roles.indexOf(sel.role) : 0));
@@ -272,7 +288,7 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
 
     function renderStatic() {
         $('[data-legend]').innerHTML = Object.entries(roles).filter(([code]) => code !== 'deuxieme_corde')
-            .map(([code, r]) => `<div class="flex items-center gap-2.5 text-sm"><span class="w-3.5 h-3.5 rounded-full" style="background:${e(r.color)}"></span><span class="font-semibold flex-1">${code === 'premiere_corde' ? '1ère / 2ème corde' : e(r.label)}</span><span class="text-[11px] muted">${e(r.zone)}</span></div>`).join('');
+            .map(([code, r]) => `<div class="flex items-center gap-2.5 text-sm"><span class="w-3.5 h-3.5 rounded-full" style="background:${e(r.color)}"></span><span class="font-semibold flex-1">${code === 'premiere_corde' ? 'Corde poitier' : e(r.label)}</span><span class="text-[11px] muted">${e(r.zone)}</span></div>`).join('');
         $('[data-wind-dir]').value = S.wind.dir ?? '';
         $('[data-wind-kts]').value = S.wind.kts ?? '';
         const onSiteCount = members.filter(onSite).length;
@@ -293,7 +309,7 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
             bwaSide: S.bwaSide, fondCount: S.fondCount,
         });
         $$('[data-balance]', root).forEach((el) => { el.innerHTML = balanceCard(b); });
-        $('[data-role-filters]').innerHTML = ROLE_FILTERS.map((f) => `<button type="button" data-role-filter="${f}" class="chip whitespace-nowrap cursor-pointer ${S.roleFilter === f ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-600'}">${f === 'tous' ? 'Tous' : f === 'premiere_corde' ? 'Cordes' : e(roles[f]?.label)}</button>`).join('');
+        $('[data-role-filters]').innerHTML = ROLE_FILTERS.map((f) => `<button type="button" data-role-filter="${f}" class="chip whitespace-nowrap cursor-pointer ${S.roleFilter === f ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-600'}">${f === 'tous' ? 'Tous' : f === 'premiere_corde' ? 'Corde poitier' : e(roles[f]?.label)}</button>`).join('');
         $('[data-member-list]').innerHTML = filteredMembers().map(memberCard).join('') || '<p class="text-sm muted">Aucun membre.</p>';
         renderProgress(b);
         renderStatus();
@@ -303,13 +319,14 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
 
     // ---------- events ----------
     document.addEventListener('click', async (event) => {
+        if (!active()) return;
         const t = event.target.closest('[data-pos],[data-member],[data-config],[data-place],[data-role-filter],[data-bwa-side],[data-fonds],[data-action]');
         if (!t) return;
         const d = t.dataset;
         if (d.pos) { S.selected = S.selected === d.pos ? null : d.pos; render(); return; }
         if (d.member) {
             const id = +d.member;
-            if (memberById.get(id)?.elsewhere) { toast(`Déjà placé sur ${memberById.get(id).elsewhere}`); return; }
+            if (isBlocked(memberById.get(id) ?? {})) { toast(`Déjà placé sur ${memberById.get(id).elsewhere} (cadenas fermé)`); return; }
             if (S.selected) assign(S.selected, id); else toast('Sélectionnez d’abord un poste sur la yole');
             return;
         }
@@ -338,7 +355,7 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
                 if (!saved) return;
                 if (saved === 'offline') { S.validateRequested = true; S.dirty = true; await saveNow(); toast('Validation enregistrée sur l’appareil : appliquée au retour du réseau.', 'sun'); return; }
                 const b = stats();
-                const modal = document.querySelector('[data-validate-modal]');
+                const modal = panel.querySelector('[data-validate-modal]');
                 modal.querySelector('[data-validate-summary]').textContent = `${config().name} · ${b.filled}/${b.positions} postes · ${kg(b.total)} à bord. Le plan sera figé pour cette sortie (il reste modifiable en le rouvrant).`;
                 modal.querySelector('[data-validate-sides]').textContent = `${b.bwaCount} (${S.bwaSide === 'tribord' ? 'tribord' : 'bâbord'})`;
                 modal.querySelector('[data-validate-ends]').textContent = kg(b.total);
@@ -346,7 +363,7 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
                 modal.classList.replace('hidden', 'grid');
                 break;
             }
-            case 'close-modal': document.querySelector('[data-validate-modal]').classList.replace('grid', 'hidden'); break;
+            case 'close-modal': panel.querySelector('[data-validate-modal]').classList.replace('grid', 'hidden'); break;
             case 'close-inline': await saveNow(); location.reload(); break;
         }
     });
@@ -393,7 +410,23 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
         assign(seat.dataset.pos, +event.dataTransfer.getData('text/plain'));
     });
 
-    window.addEventListener('resize', () => renderSheet());
+    window.addEventListener('resize', () => { if (active()) renderSheet(); });
+
+    // Another boat of the page changed its crew: its rowers are "elsewhere" for this one.
+    window.addEventListener('yt:crew', (event) => {
+        const other = event.detail;
+        if (!other.boat || other.uuid === data.plan.uuid) return;
+        const seated = new Set(other.memberIds);
+        members.forEach((m) => {
+            if (seated.has(m.id)) m.elsewhere = other.boat;
+            else if (m.elsewhere === other.boat) m.elsewhere = null;
+        });
+        if (active()) render();
+    });
+    window.addEventListener('yt:share', (event) => { S.shareCrew = Boolean(event.detail.share); if (active()) render(); });
+
+    /** Tab shown: take over the page-wide bars. */
+    root.ytActivate = () => { renderStatic(); render(); setSaveState(saveText); };
 
     renderStatic();
     render();
@@ -422,5 +455,63 @@ export function mountCrewPlanEditor(root, data = JSON.parse(root.dataset.crewEdi
         renderStatic();
         render();
         setSaveState('Sur l’appareil');
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => { if (data.plan.uuid) broadcast(); });
+}
+
+/**
+ * Plan page with several boats: tabs switch between their editors without reloading, and the padlock decides
+ * whether a rower can sit on several boats (saved on the outing, queued when offline).
+ */
+export function mountCrewPlanTabs(bar) {
+    const tabs = [...bar.querySelectorAll('[data-switch-plan]')];
+    const preview = document.querySelector('[data-preview-link]');
+
+    bar.addEventListener('click', (event) => {
+        const tab = event.target.closest('[data-switch-plan]');
+        if (!tab) return;
+        tabs.forEach((other) => {
+            const on = other === tab;
+            other.classList.toggle('on', on);
+            other.setAttribute('aria-selected', on ? 'true' : 'false');
+            document.querySelector(`[data-editor-panel="${other.dataset.switchPlan}"]`).hidden = !on;
+        });
+        document.querySelector(`[data-editor-panel="${tab.dataset.switchPlan}"] [data-crew-editor]`)?.ytActivate?.();
+        history.replaceState(null, '', tab.dataset.editUrl);
+        if (preview) preview.href = tab.dataset.showUrl;
+    });
+
+    window.addEventListener('yt:crew', (event) => {
+        const count = bar.querySelector(`[data-tab-count="${event.detail.planId}"]`);
+        if (count) count.textContent = `${event.detail.filled}/${event.detail.total}`;
+    });
+
+    const toggle = bar.querySelector('[data-share-toggle]');
+    toggle?.addEventListener('click', async () => {
+        const share = toggle.getAttribute('aria-pressed') !== 'true';
+        toggle.setAttribute('aria-pressed', share ? 'true' : 'false');
+        toggle.classList.toggle('bg-emerald-100', share);
+        toggle.classList.toggle('text-emerald-800', share);
+        toggle.classList.toggle('bg-slate-100', !share);
+        toggle.classList.toggle('text-slate-700', !share);
+        toggle.querySelector('[data-share-icon="lock"]').classList.toggle('hidden', share);
+        toggle.querySelector('[data-share-icon="unlock"]').classList.toggle('hidden', !share);
+        toggle.querySelector('[data-share-label]').textContent = share ? 'Coursiers réutilisables' : 'Un coursier = une yole';
+        window.dispatchEvent(new CustomEvent('yt:share', { detail: { share } }));
+        toast(share ? 'Cadenas ouvert : un coursier peut être placé sur plusieurs yoles' : 'Cadenas fermé : chaque coursier sur une seule yole');
+
+        const url = toggle.dataset.shareUrl;
+        try {
+            await send(url, 'PUT', { share_crew: share });
+        } catch (error) {
+            if (!error.offline) { toast(error.message || 'Échec de l’enregistrement', 'error'); return; }
+            const label = `Cadenas des coursiers : ${share ? 'ouvert' : 'fermé'}`;
+            await enqueue({
+                key: `share:${toggle.dataset.outingUuid}`,
+                entity: 'form',
+                entity_uuid: uuid(),
+                payload: { method: 'PUT', url: new URL(url, location.origin).pathname, fields: { share_crew: share ? '1' : '0' }, label },
+                label,
+            });
+        }
+    });
 }

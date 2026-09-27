@@ -33,7 +33,7 @@
         @foreach ([
             'bwa_count' => ['Bwa dressés', 1, 12, 'Tous au vent'],
             'ecoute_count' => ['Écoutes', 1, 4, $sails >= 2 ? 'Petite + grande voile' : 'Une voile'],
-            'cordes_count' => ['Cordes', 0, 2, 'À l’avant (2 voiles)'],
+            'cordes_count' => ['Cordes poitier', 0, 2, 'À l’avant (2 voiles)'],
             'pagaie_count' => ['Pagaies', 0, 3, 'Sans compter le patron'],
         ] as $field => [$label, $min, $max, $hint])
             <div>

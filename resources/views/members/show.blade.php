@@ -21,6 +21,7 @@
                 @endif
                 <div class="flex justify-center flex-wrap gap-1.5 mt-3">
                     <x-level-pill :level="$member->level" />
+                    <x-medical-badge :member="$member" />
                     @if ($member->is_active)
                         <span class="chip bg-emerald-100 text-emerald-800">Actif</span>
                     @else

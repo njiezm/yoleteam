@@ -110,6 +110,23 @@
                 <p class="text-xs muted">Un équipage par manche : il peut changer d’une manche à l’autre.</p>
             @endif
         </div>
+        @if ($outing->crewPlans->count() > 1)
+            {{-- Several boats: compose them together (tabs, shared pool of rowers) and see them side by side. --}}
+            <div class="card p-3 mb-4 flex flex-wrap items-center gap-2">
+                <a href="{{ route('crew-plans.edit', [$outing, $outing->crewPlans->first()]) }}" class="btn-primary btn-sm"><x-icon name="edit" class="w-4 h-4" />Composer les {{ $outing->crewPlans->where('race_number', $outing->crewPlans->first()->race_number)->count() }} équipages ensemble</a>
+                <a href="{{ route('crew-plans.index', $outing) }}" class="btn-ghost btn-sm"><x-icon name="boat" class="w-4 h-4" />Voir tous les plans</a>
+                <form method="POST" action="{{ route('outings.share-crew.update', $outing) }}" class="sm:ml-auto"
+                      data-offline-form="Cadenas des coursiers : {{ $outing->share_crew ? 'fermé' : 'ouvert' }}" data-offline-redirect="{{ route('outings.show', $outing) }}#equipages">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="share_crew" value="{{ $outing->share_crew ? 0 : 1 }}">
+                    <button @class(['btn btn-sm', 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' => $outing->share_crew, 'bg-slate-100 text-slate-700 hover:bg-slate-200' => ! $outing->share_crew])
+                            title="{{ $outing->share_crew ? 'Fermer : chaque coursier sur une seule yole' : 'Ouvrir : un coursier peut être placé sur plusieurs yoles' }}">
+                        <x-icon :name="$outing->share_crew ? 'unlock' : 'lock'" class="w-4 h-4" />{{ $outing->share_crew ? 'Coursiers réutilisables' : 'Un coursier = une yole' }}
+                    </button>
+                </form>
+            </div>
+        @endif
         <div class="space-y-5" data-outing-plans data-outing-uuid="{{ $outing->uuid }}">
             <div class="hidden space-y-3" data-offline-plans></div>
 

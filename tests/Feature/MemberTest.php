@@ -257,9 +257,9 @@ class MemberTest extends TestCase
     {
         $this->signInAdmin();
 
-        $this->post(route('members.store'), $this->payload(['weight_kg' => 20, 'height_cm' => 250, 'email' => 'pas-un-email', 'roles' => [9999]]))
+        $this->post(route('members.store'), $this->payload(['weight_kg' => 0, 'height_cm' => 250, 'email' => 'pas-un-email', 'roles' => [9999]]))
             ->assertSessionHasErrors([
-                'weight_kg' => 'Le champ poids doit être compris entre 30 et 150.',
+                'weight_kg',
                 'height_cm' => 'Le champ taille doit être compris entre 100 et 220.',
                 'email',
                 'roles.0',
@@ -404,7 +404,8 @@ class MemberTest extends TestCase
         $this->assertStringContainsString('<t xml:space="preserve">Rosemain</t>', $sheet);
         $this->assertStringContainsString('<t xml:space="preserve">Bwa dressé ★, Écopeur</t>', $sheet);
         $this->assertStringContainsString('<c r="D2"><v>35</v></c><c r="E2"><v>12</v></c><c r="F2"><v>78.5</v></c>', $sheet);
-        $this->assertStringContainsString('<c r="M2"><v>100</v></c>', $sheet);
+        $this->assertStringContainsString('<t xml:space="preserve">Manquant</t>', $sheet);
+        $this->assertStringContainsString('<c r="N2"><v>100</v></c>', $sheet);
         $this->assertStringNotContainsString('Debutin', $sheet);
         $this->assertStringNotContainsString('Étrangère', $sheet);
     }

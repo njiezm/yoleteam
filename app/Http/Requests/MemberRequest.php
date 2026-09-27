@@ -22,7 +22,7 @@ class MemberRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge(['is_active' => $this->boolean('is_active')]);
+        $this->merge(['is_active' => $this->boolean('is_active'), 'medical_certificate' => $this->boolean('medical_certificate')]);
     }
 
     private function creating(): bool
@@ -71,7 +71,7 @@ class MemberRequest extends FormRequest
             'gender' => ['nullable', Rule::enum(Gender::class)],
             'phone' => ['nullable', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:255'],
-            'weight_kg' => ['nullable', 'numeric', 'between:30,150'],
+            'weight_kg' => ['nullable', 'numeric', 'min:1', 'max:9999'],
             'height_cm' => ['nullable', 'integer', 'between:100,220'],
             'level' => ['required', Rule::enum(MemberLevel::class)],
             'yole_years' => ['nullable', 'integer', 'min:0', 'max:80'],
@@ -81,6 +81,7 @@ class MemberRequest extends FormRequest
             'preferred.*' => ['integer', Rule::exists('crew_roles', 'id')],
             'notes' => ['nullable', 'string', 'max:5000'],
             'is_active' => ['boolean'],
+            'medical_certificate' => ['boolean'],
         ];
     }
 
@@ -95,6 +96,7 @@ class MemberRequest extends FormRequest
             'preferred' => 'postes préférés',
             'preferred.*' => 'poste préféré',
             'is_active' => 'membre actif',
+            'medical_certificate' => 'certificat médical',
             'yole_years' => 'nombre d’années de yole',
         ];
     }

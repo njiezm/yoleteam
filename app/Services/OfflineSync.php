@@ -39,7 +39,7 @@ class OfflineSync
      * authorization and tenant scoping as online).
      */
     public const REPLAYABLE_ROUTES = [
-        'outings.store', 'outings.update', 'outings.results.update', 'outings.navigation.update', 'outings.complete', 'outings.reopen',
+        'outings.store', 'outings.update', 'outings.results.update', 'outings.navigation.update', 'outings.complete', 'outings.reopen', 'outings.share-crew.update',
         'members.store', 'members.update',
         'races.stages.store', 'races.stages.results.update',
     ];

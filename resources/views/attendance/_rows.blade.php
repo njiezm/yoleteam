@@ -5,7 +5,7 @@
                          data-member-row="{{ $member->id }}" data-label="{{ $member->short_name }}" data-name="{{ \Illuminate\Support\Str::lower(\Illuminate\Support\Str::ascii($member->full_name.' '.$member->nickname)) }}">
                         <x-avatar :member="$member" />
                         <div class="flex-1 min-w-0">
-                            <p class="font-bold truncate"><span class="lg:hidden">{{ $member->short_name }}</span><span class="hidden lg:inline">{{ $member->full_name }}</span></p>
+                            <p class="font-bold truncate flex items-center gap-1.5"><span class="truncate lg:hidden">{{ $member->short_name }}</span><span class="truncate hidden lg:inline">{{ $member->full_name }}</span>@unless ($member->medical_certificate)<x-medical-badge :member="$member" compact />@endunless</p>
                             <p class="text-xs muted truncate">{{ $member->primaryCrewRole()?->label ?? 'Sans poste' }}@if ($member->weight_kg)<span class="hidden sm:inline"> · {{ (float) $member->weight_kg }} kg</span>@endif</p>
                         </div>
                         <div class="flex gap-1 lg:gap-1.5">

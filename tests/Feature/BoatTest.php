@@ -57,7 +57,7 @@ class BoatTest extends TestCase
             ->assertSee('Postes (17 + 4 places de fond au choix)')
             ->assertSee('Bwa dressé 8 (dernier)')
             ->assertSee('Écoute grande voile 2')
-            ->assertSee('2ème corde')
+            ->assertSee('Corde poitier 2')
             ->assertSee('Pagaie 2')
             ->assertSee(route('boats.configurations.update', [$boat, $boat->configurations()->where('is_default', true)->first()]))
             ->assertSee('Nouvelle configuration');

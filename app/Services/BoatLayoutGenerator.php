@@ -56,8 +56,8 @@ class BoatLayoutGenerator
         $positions = [];
         $step = 4.6; // vertical room of one seat (a name tag) in drawing units
 
-        // Avant : 1ère corde tout à l'avant, 2ème corde juste derrière (2 voiles).
-        $cordes = [[CrewRole::PREMIERE_CORDE, 'premiere_corde', '1ère corde'], [CrewRole::DEUXIEME_CORDE, 'deuxieme_corde', '2ème corde']];
+        // Avant : corde poitier 1 tout à l'avant, corde poitier 2 juste derrière (2 voiles).
+        $cordes = [[CrewRole::PREMIERE_CORDE, 'premiere_corde', 'Corde poitier 1'], [CrewRole::DEUXIEME_CORDE, 'deuxieme_corde', 'Corde poitier 2']];
         foreach (array_slice($cordes, 0, min(2, $counts['cordes_count'])) as $index => [$role, $code, $label]) {
             $positions[] = $this->position($role, $code, $label, BoatSide::Centre, null, 50, 5 + $index * $step);
         }

@@ -38,7 +38,9 @@ class CrewPlanEditorData
 
         return [
             'plan' => [
+                'id' => $plan?->id,
                 'uuid' => $plan?->uuid,
+                'boat_name' => $boat->name,
                 'label' => $boat->name.$raceLabel.' · '.$outing->title,
                 'status' => $plan?->status->value ?? 'brouillon',
                 'version' => $plan?->version ?? 1,
@@ -61,6 +63,10 @@ class CrewPlanEditorData
             'assignments' => (object) ($source ? $this->presenter->assignments($source) : []),
             'attendanceRecorded' => $outing->attendances->isNotEmpty(),
             'attendanceUrl' => route('attendance.edit', $outing),
+            'shareCrew' => (bool) $outing->share_crew,
+            'shareUrl' => route('outings.share-crew.update', $outing),
+            'outingUuid' => $outing->uuid,
+            'boatCount' => $outing->crewPlans->where('race_number', $raceNumber)->count(),
         ];
     }
 
@@ -134,6 +140,7 @@ class CrewPlanEditorData
                 'kg' => $member->weight_kg !== null ? (float) $member->weight_kg : null,
                 'cm' => $member->height_cm,
                 'level' => $member->level->label(),
+                'certificate' => (bool) $member->medical_certificate,
                 'roles' => $member->orderedCrewRoles()->pluck('code')->all(),
                 'status' => $statuses->get($member->id)?->value,
                 'elsewhere' => $elsewhere->get($member->id),

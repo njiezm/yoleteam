@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'association_id', 'uuid', 'type', 'title', 'date', 'start_time', 'end_time', 'location',
     'wind_direction', 'wind_strength', 'wind_gusts', 'sea_state', 'swell_m', 'weather',
-    'status', 'race_stage_id', 'notes', 'impressions', 'distance_nm',
+    'status', 'share_crew', 'race_stage_id', 'notes', 'impressions', 'distance_nm',
     'day_rank', 'stage_rank', 'general_rank', 'created_by',
 ])]
 class Outing extends Model
@@ -35,6 +35,7 @@ class Outing extends Model
         return [
             'type' => OutingType::class,
             'status' => OutingStatus::class,
+            'share_crew' => 'boolean',
             'date' => 'date',
             'wind_direction' => 'integer',
             'wind_strength' => 'integer',
